@@ -8,7 +8,7 @@ import os, sys, time, sqlite3, secrets, hashlib, mimetypes, socket, random, re
 from datetime import datetime, timedelta
 from collections import defaultdict
 from pathlib import Path
-from flask import Flask, request, jsonify, render_template, send_file, abort
+from flask import Flask, request, jsonify, render_template, send_file, abort, session, redirect
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -45,15 +45,19 @@ def get_lan_url(port=5000):
 DETECTED_URL = get_lan_url()
 
 def get_public_url(request=None):
-    """Return the best public URL: request host (if from internet), or detected LAN IP"""
+    """Return the best public URL: request host (if from trusted proxy), or detected LAN IP"""
     if request and request.host_url:
         host = request.host_url.rstrip("/")
-        # Detect scheme from proxy header (ngrok sends HTTPS → HTTP to Flask)
-        scheme = request.headers.get("X-Forwarded-Proto", "")
-        if scheme == "https":
-            host = host.replace("http://", "https://", 1)
-        # If accessed via localhost, fall through to LAN IP
-        if "127.0.0.1" not in host and "localhost" not in host:
+        # Only trust known proxy/reverse-proxy hosts
+        trusted = ("ngrok-free.", "trycloudflare.com", "loca.lt", "localhost", "127.0.0.1")
+        is_local = "127.0.0.1" in host or "localhost" in host
+        is_trusted = any(t in host for t in trusted)
+        if is_local:
+            return BASE_URL or DETECTED_URL
+        if is_trusted:
+            scheme = request.headers.get("X-Forwarded-Proto", "")
+            if scheme == "https":
+                host = host.replace("http://", "https://", 1)
             return host
     return BASE_URL or DETECTED_URL
 
@@ -103,7 +107,11 @@ else:
 fernet = Fernet(FERNET_KEY)
 
 app = Flask(__name__)
+app.secret_key = secrets.token_hex(32)  # For session cookies
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10MB
+
+# Master password (optional — set via env SECDROP_MASTER_PW)
+MASTER_PW = os.environ.get("SECDROP_MASTER_PW", "").strip()
 
 # ── Security headers ────────────────────────────────────────
 @app.after_request
@@ -200,13 +208,37 @@ def cleanup_expired():
     db.commit()
     db.close()
 
+# ── Master Password Auth ─────────────────────────────────────
+def require_master():
+    if not MASTER_PW:
+        return True
+    return session.get("authed") == True
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        if request.form.get("password", "") == MASTER_PW:
+            session["authed"] = True
+            return redirect(request.args.get("next") or "/")
+        return render_template("login.html", error="Wrong password")
+    return render_template("login.html")
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/login")
+
 # ── Routes ──────────────────────────────────────────────────
 @app.route("/")
 def index():
+    if not require_master():
+        return redirect(f"/login?next=/")
     return render_template("index.html")
 
 @app.route("/api/paste", methods=["POST"])
 def create_paste():
+    if not require_master():
+        return jsonify({"error": "Authentication required"}), 401
     cleanup_expired()
 
     paste_id = generate_id()
@@ -275,7 +307,7 @@ def access_paste(paste_id):
         return jsonify({"error": "Not found or expired"}), 404
 
     if paste["password_hash"]:
-        pw = request.json.get("password", "")
+        pw = request.json.get("password", "").strip()
         # Rate limiting
         allowed, msg = check_rate_limit(paste_id)
         if not allowed:
@@ -333,7 +365,7 @@ def raw_paste(paste_id):
         return jsonify({"error": "Not found"}), 404
 
     if paste["password_hash"]:
-        pw = request.json.get("password", "")
+        pw = request.json.get("password", "").strip()
         allowed, msg = check_rate_limit(paste_id)
         if not allowed:
             db.close()

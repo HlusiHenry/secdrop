@@ -13,4 +13,6 @@ echo ""
 echo "  Starting server..."
 echo "  Open: http://127.0.0.1:5000"
 echo ""
+# Optional: set master password
+# export SECDROP_MASTER_PW="yourpassword"
 .venv/bin/python app.py
