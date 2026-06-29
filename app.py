@@ -207,7 +207,7 @@ def get_ip_info(ip: str) -> dict:
     if ip in _ip_info_cache:
         return _ip_info_cache[ip]
     if ip in ("127.0.0.1", "localhost", "::1"):
-        return {"ip": ip, "city": "Localhost", "country": "🏠", "isp": "Loopback"}
+        return {"query": ip, "ip": ip, "city": "Localhost", "country": "🏠", "isp": "Loopback", "countryCode": "LO", "regionName": "", "org": "", "timezone": ""}
     try:
         import urllib.request, json as j
         url = f"http://ip-api.com/json/{ip}?fields=status,country,countryCode,regionName,city,isp,org,as,query,timezone"
@@ -218,7 +218,7 @@ def get_ip_info(ip: str) -> dict:
             return data
     except:
         pass
-    return {"ip": ip, "city": "Unknown", "country": "?", "isp": "Unknown"}
+    return {"query": ip, "ip": ip, "city": "Unknown", "country": "?", "isp": "Unknown", "countryCode": "", "regionName": "", "org": "", "timezone": ""}
 
 # Request rate limiting (per IP)
 _request_counts: dict[str, list[float]] = defaultdict(list)
@@ -595,7 +595,16 @@ def admin_unblock_ip():
 def admin_ip_info(ip):
     if not is_admin():
         return jsonify({"error": "Unauthorized"}), 403
-    return jsonify(get_ip_info(ip))
+    info = get_ip_info(ip)
+    # Look up users with this IP for device info
+    db = get_db()
+    users = db.execute(
+        "SELECT username, user_agent, device_info, last_login FROM users WHERE ip_address = ? OR last_ip = ? ORDER BY last_login DESC LIMIT 3",
+        (ip, ip)
+    ).fetchall()
+    db.close()
+    info["users"] = [dict(u) for u in users]
+    return jsonify(info)
 
 @app.route("/api/admin/reset-pw/<int:user_id>", methods=["POST"])
 def admin_reset_password(user_id):
