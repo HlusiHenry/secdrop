@@ -675,7 +675,7 @@ def admin_toggle_cloud(user_id):
         return jsonify({"error": "Unauthorized"}), 403
     db = get_db()
     current = db.execute("SELECT cloud_enabled FROM users WHERE id = ?", (user_id,)).fetchone()
-    new_val = 0 if (current and current["cloud_enabled"]) else 1
+    new_val = 0 if (current and current["cloud_enabled"] and str(current["cloud_enabled"]) != "0") else 1
     db.execute("UPDATE users SET cloud_enabled = ? WHERE id = ?", (new_val, user_id))
     db.commit()
     db.close()
@@ -689,7 +689,7 @@ def cloud_save_paste(paste_id):
     # Check if user has cloud permission
     db = get_db()
     perm = db.execute("SELECT cloud_enabled FROM users WHERE id = ?", (user["id"],)).fetchone()
-    if not perm or not perm["cloud_enabled"]:
+    if not perm or not perm["cloud_enabled"] or str(perm["cloud_enabled"]) == "0":
         db.close()
         return jsonify({"error": "Cloud not enabled for your account"}), 403
     # Get paste content
