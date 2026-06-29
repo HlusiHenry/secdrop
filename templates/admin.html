@@ -175,7 +175,7 @@ async function $loadPastes() {
     const expired = p.expires_at && new Date(p.expires_at) < new Date();
     return `<tr class="paste-row" style="${expired?'opacity:0.5':''}">
       <td><a href="/${p.id}" target="_blank">/${p.id}</a></td>
-      <td><span class="${p.type==='file'?'badge-file':'badge-text'}">${p.type}</span></td>
+      <td><span class="${p.type==='file'?'badge-file':'badge-text'}">${p.type}</span>${p.password_hash?' 🔒':''}</td>
       <td>${p.username||'anon'}</td>
       <td class="ip-link" data-ip="${p.creator_ip||''}">${p.creator_ip||'-'}</td>
       <td>${p.views}</td>

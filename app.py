@@ -511,7 +511,7 @@ def api_admin_pastes():
     db = get_db()
     pastes = db.execute("""
         SELECT p.id, p.type, p.filename, p.size_bytes, p.burn_after, p.expires_at, p.created_at, p.views,
-               p.creator_ip, COALESCE(u.username, 'anonymous') as username
+               p.creator_ip, p.password_hash, COALESCE(u.username, 'anonymous') as username
         FROM pastes p LEFT JOIN users u ON p.user_id = u.id
         ORDER BY p.created_at DESC LIMIT 100
     """).fetchall()
