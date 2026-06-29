@@ -17,5 +17,5 @@ echo ""
 # export SECDROP_MASTER_PW="yourpassword"
 # Telegram Bot
 export TELEGRAM_BOT_TOKEN="8938421556:AAGFatMTojEMAGv0f9YxsKgoMASb0vVRHlA"
-export TELEGRAM_ADMIN_IDS=""   # Deine Chat-ID von @userinfobot
+export TELEGRAM_ADMIN_IDS="8797262973"   # Deine Chat-ID
 .venv/bin/python app.py
