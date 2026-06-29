@@ -260,7 +260,7 @@ def init_db():
     """)
     # Auto-migrate: add missing columns
     for table, cols in [
-        ("users", ["ip_address", "last_ip", "last_login"]),
+        ("users", ["ip_address", "last_ip", "last_login", "user_agent", "device_info"]),
         ("pastes", ["user_id", "creator_ip"]),
     ]:
         existing = {r[1] for r in db.execute(f"PRAGMA table_info({table})").fetchall()}
@@ -341,8 +341,8 @@ def register():
         db.close()
         return jsonify({"error": "Username already taken"}), 409
 
-    db.execute("INSERT INTO users (username, password_hash, ip_address, last_ip, last_login) VALUES (?, ?, ?, ?, datetime('now'))",
-               (username, hash_password(password), ip, ip))
+    db.execute("INSERT INTO users (username, password_hash, ip_address, last_ip, last_login, user_agent) VALUES (?, ?, ?, ?, datetime('now'), ?)",
+               (username, hash_password(password), ip, ip, request.headers.get("User-Agent", "")[:500]))
     db.commit()
     user = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
     db.close()
@@ -371,7 +371,7 @@ def api_login():
         _login_fails[f"ip:{ip}"].append(time.time())
         db.close()
         return jsonify({"error": "Wrong username or password"}), 401
-    db.execute("UPDATE users SET last_ip = ?, last_login = datetime('now') WHERE id = ?", (ip, user["id"]))
+    db.execute("UPDATE users SET last_ip = ?, last_login = datetime('now'), user_agent = ? WHERE id = ?", (ip, request.headers.get("User-Agent", "")[:500], user["id"]))
     db.commit()
     db.close()
     session["user_id"] = user["id"]
@@ -388,6 +388,19 @@ def api_me():
     if user:
         return jsonify({"username": user["username"], "id": user["id"]})
     return jsonify({"username": None})
+
+@app.route("/api/device-info", methods=["POST"])
+def save_device_info():
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "Login required"}), 401
+    data = request.get_json() or {}
+    info = f"{data.get('screen','')} | {data.get('lang','')} | {data.get('tz','')} | {data.get('platform','')}"
+    db = get_db()
+    db.execute("UPDATE users SET device_info = ? WHERE id = ?", (info[:500], user["id"]))
+    db.commit()
+    db.close()
+    return jsonify({"ok": True})
 
 @app.route("/api/change-password", methods=["POST"])
 def change_password():
@@ -454,7 +467,7 @@ def api_admin_users():
     if not is_admin():
         return jsonify({"error": "Unauthorized"}), 403
     db = get_db()
-    users = db.execute("SELECT id, username, ip_address, last_ip, last_login, created_at FROM users ORDER BY id").fetchall()
+    users = db.execute("SELECT id, username, ip_address, last_ip, last_login, user_agent, device_info, created_at FROM users ORDER BY id").fetchall()
     db.close()
     return jsonify([dict(u) for u in users])
 

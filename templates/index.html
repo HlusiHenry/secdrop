@@ -648,6 +648,27 @@ document.addEventListener('keydown', e => {
 
 // Init
 checkAuth();
+
+// Send device fingerprint on login/register
+async function sendDeviceInfo() {
+  if (!currentUser) return;
+  try {
+    await fetch('/api/device-info', {method:'POST', headers:{'Content-Type':'application/json'}, 
+      body:JSON.stringify({
+        screen: `${screen.width}x${screen.height}`,
+        lang: navigator.language,
+        tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        platform: navigator.platform
+      })
+    });
+  } catch(e) {}
+}
+// Hook into checkAuth to send after login
+const _origCheckAuth = checkAuth;
+checkAuth = async function() {
+  await _origCheckAuth();
+  setTimeout(sendDeviceInfo, 500);
+};
 </script>
 </body>
 </html>
