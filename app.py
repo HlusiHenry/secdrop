@@ -652,41 +652,6 @@ def admin_config():
         "requests": MAX_REQUESTS_PER_MIN,
     })
 
-@app.route("/api/admin/cloud")
-def api_admin_cloud():
-    if not is_admin():
-        return jsonify({"error": "Unauthorized"}), 403
-    cloud_base = DATA_DIR / "cloud"
-    if not cloud_base.exists():
-        return jsonify([])
-    files = []
-    for user_dir in sorted(cloud_base.iterdir()):
-        if user_dir.is_dir():
-            for f in sorted(user_dir.iterdir(), key=lambda x: -x.stat().st_mtime):
-                if f.is_file():
-                    files.append({
-                        "username": user_dir.name,
-                        "filename": f.name,
-                        "size": f.stat().st_size,
-                        "modified": f.stat().st_mtime
-                    })
-    return jsonify(files[:100])
-
-@app.route("/api/admin/cloud/preview/<username>/<filename>")
-def admin_cloud_preview(username, filename):
-    if not is_admin():
-        return jsonify({"error": "Unauthorized"}), 403
-    if ".." in filename or "/" in filename or ".." in username:
-        return jsonify({"error": "Invalid"}), 400
-    path = DATA_DIR / "cloud" / username / filename
-    if not path.exists():
-        return jsonify({"error": "Not found"}), 404
-    try:
-        content = path.read_text()[:5000]
-        return jsonify({"content": content, "size": path.stat().st_size})
-    except:
-        return jsonify({"content": "[binary file — preview not available]", "size": path.stat().st_size})
-
 @app.route("/api/admin/block-ip", methods=["POST"])
 def admin_block_ip():
     if not is_admin():
