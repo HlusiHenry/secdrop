@@ -48,6 +48,7 @@
     <a href="/">← back</a>
     <div class="btn-row">
       <button onclick="toggleAdminPw()">CHANGE ADMIN PW</button>
+      <button onclick="toggleConfig()">LIMITS CONFIG</button>
       <button onclick="clearAllLocks()" style="border-color:var(--green);color:var(--green)">CLEAR ALL LOCKS</button>
     </div>
   </header>
@@ -59,6 +60,18 @@
     <input type="password" id="adm-new-pw2" placeholder="Repeat">
     <button onclick="saveAdminPw()">SAVE</button>
     <div id="admin-pw-msg" style="font-size:0.65rem;margin-top:0.5rem;display:none"></div>
+  </div>
+
+  <div class="admin-pw-box" id="config-box">
+    <div style="color:var(--cyan);margin-bottom:0.8rem;font-size:0.8rem">&gt; rate_limits_config</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;font-size:0.7rem">
+      <span>Max login fails:</span><input type="number" id="cfg-login" min="1" max="100" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.2rem;font-family:inherit;border-radius:3px">
+      <span>Max registers/min:</span><input type="number" id="cfg-reg" min="1" max="100" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.2rem;font-family:inherit;border-radius:3px">
+      <span>Max uploads/hour:</span><input type="number" id="cfg-upload" min="1" max="500" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.2rem;font-family:inherit;border-radius:3px">
+      <span>Max requests/min:</span><input type="number" id="cfg-req" min="10" max="1000" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.2rem;font-family:inherit;border-radius:3px">
+    </div>
+    <button onclick="saveConfig()" style="margin-top:0.5rem">SAVE CONFIG</button>
+    <div id="config-msg" style="font-size:0.65rem;margin-top:0.5rem;display:none"></div>
   </div>
 
   <div class="stats" id="stats">
@@ -243,6 +256,30 @@ async function extendPaste(id, days) {
 function toggleAdminPw() {
   const b = document.getElementById('admin-pw-box');
   b.style.display = b.style.display === 'none' ? 'block' : 'none';
+}
+function toggleConfig() {
+  const b = document.getElementById('config-box');
+  b.style.display = b.style.display === 'none' ? 'block' : 'none';
+  if (b.style.display === 'block') loadConfig();
+}
+async function loadConfig() {
+  const c = await api('/api/admin/config');
+  document.getElementById('cfg-login').value = c.login_fails;
+  document.getElementById('cfg-reg').value = c.registers;
+  document.getElementById('cfg-upload').value = c.uploads;
+  document.getElementById('cfg-req').value = c.requests;
+}
+async function saveConfig() {
+  const d = await api('/api/admin/config', {method:'POST', body:JSON.stringify({
+    login_fails: parseInt(document.getElementById('cfg-login').value),
+    registers: parseInt(document.getElementById('cfg-reg').value),
+    uploads: parseInt(document.getElementById('cfg-upload').value),
+    requests: parseInt(document.getElementById('cfg-req').value),
+  })});
+  const msg = document.getElementById('config-msg');
+  msg.textContent = d.ok ? 'Saved!' : (d.error||'Error');
+  msg.style.color = d.ok ? 'var(--green)' : 'var(--red)';
+  msg.style.display = 'block';
 }
 async function saveAdminPw() {
   const oldPw = document.getElementById('adm-old-pw').value;

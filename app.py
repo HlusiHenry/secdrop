@@ -567,6 +567,16 @@ def api_admin_blocked():
         recent = [t for t in times if now - t < 60]
         if len(recent) >= MAX_REGISTERS_PER_MIN:
             blocked.append({"target": ip, "attempts": len(recent), "type": "register"})
+    # Upload limits
+    for ip, times in _upload_counts.items():
+        recent = [t for t in times if now - t < 3600]
+        if len(recent) >= UPLOAD_LIMIT_PER_HOUR:
+            blocked.append({"target": ip, "attempts": len(recent), "type": "upload"})
+    # Request floods
+    for ip, times in _request_counts.items():
+        recent = [t for t in times if now - t < 60]
+        if len(recent) >= MAX_REQUESTS_PER_MIN:
+            blocked.append({"target": ip, "attempts": len(recent), "type": "request"})
     # Permanent blocks
     for ip in _ip_blocklist:
         blocked.append({"target": ip, "attempts": 0, "type": "permablock"})
@@ -587,11 +597,30 @@ def admin_clear_locks():
 def admin_unlock_target(target):
     if not is_admin():
         return jsonify({"error": "Unauthorized"}), 403
-    # target is the identifier from blocked list (username, ip, etc.)
     _login_fails.pop(target, None)
     _register_times.pop(target, None)
     _upload_counts.pop(target, None)
+    _request_counts.pop(target, None)
     return jsonify({"ok": True})
+
+@app.route("/api/admin/config", methods=["GET", "POST"])
+def admin_config():
+    if not is_admin():
+        return jsonify({"error": "Unauthorized"}), 403
+    global MAX_LOGIN_FAILS, MAX_REGISTERS_PER_MIN, UPLOAD_LIMIT_PER_HOUR, MAX_REQUESTS_PER_MIN
+    if request.method == "POST":
+        data = request.get_json() or {}
+        if "login_fails" in data: MAX_LOGIN_FAILS = max(1, int(data["login_fails"]))
+        if "registers" in data: MAX_REGISTERS_PER_MIN = max(1, int(data["registers"]))
+        if "uploads" in data: UPLOAD_LIMIT_PER_HOUR = max(1, int(data["uploads"]))
+        if "requests" in data: MAX_REQUESTS_PER_MIN = max(10, int(data["requests"]))
+        return jsonify({"ok": True})
+    return jsonify({
+        "login_fails": MAX_LOGIN_FAILS,
+        "registers": MAX_REGISTERS_PER_MIN,
+        "uploads": UPLOAD_LIMIT_PER_HOUR,
+        "requests": MAX_REQUESTS_PER_MIN,
+    })
 
 @app.route("/api/admin/block-ip", methods=["POST"])
 def admin_block_ip():
