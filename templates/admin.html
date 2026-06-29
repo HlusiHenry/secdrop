@@ -147,6 +147,7 @@ async function $loadUsers() {
       <td>${(u.last_login||'').slice(0,16)||'-'}</td>
       <td>
         <button onclick="resetPw(${u.id})" style="background:var(--amber);color:#000;border:none;padding:0.15rem 0.4rem;cursor:pointer;font-family:inherit;font-size:0.6rem;border-radius:2px">RESET</button>
+        <label style="margin:0 0.3rem;font-size:0.6rem;cursor:pointer" title="Cloud paste"><input type="checkbox" ${u.cloud_enabled?'checked':''} onchange="toggleCloud(${u.id},this.checked)" style="accent-color:var(--cyan)"> ☁️</label>
         ${u.id!==1?`<button onclick="deleteUser(${u.id})" style="background:var(--red);color:#fff;border:none;padding:0.15rem 0.4rem;cursor:pointer;font-family:inherit;font-size:0.6rem;border-radius:2px;margin-left:0.2rem">DEL</button>`:''}
       </td>
     </tr>`).join('');
@@ -276,6 +277,10 @@ async function deleteUser(id) {
   const d = await api('/api/admin/delete-user/'+id, {method:'POST'});
   if (d.ok) loadAll();
   else alert(d.error);
+}
+
+async function toggleCloud(id, enabled) {
+  await api('/api/admin/toggle-cloud/'+id, {method:'POST'});
 }
 
 // Extend paste

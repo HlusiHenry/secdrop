@@ -91,13 +91,18 @@ WORDS = [
 ]
 
 def generate_id():
-    """Generate human-friendly ID like 'blue-fox-42'"""
-    a = random.choice(WORDS)
-    b = random.choice(WORDS)
-    while b == a:
-        b = random.choice(WORDS)
-    n = random.randint(10, 99)
-    return f"{a}-{b}-{n}"
+    """Generate varied format IDs to avoid predictable patterns"""
+    style = random.randint(0, 3)
+    if style == 0:      # word-word-NN (original)
+        a, b = random.sample(WORDS, 2)
+        return f"{a}-{b}-{random.randint(10, 99)}"
+    elif style == 1:    # word-NNN
+        return f"{random.choice(WORDS)}-{random.randint(100, 999)}"
+    elif style == 2:    # word-word-word-NN
+        a, b, c = random.sample(WORDS, 3)
+        return f"{a}-{b}-{c}-{random.randint(10, 99)}"
+    else:               # word-NNNN
+        return f"{random.choice(WORDS)}-{random.randint(1000, 9999)}"
 
 # Generate or load Fernet key for encryption
 KEY_FILE = DATA_DIR / ".seckey"
@@ -285,7 +290,7 @@ def init_db():
     """)
     # Auto-migrate: add missing columns
     for table, cols in [
-        ("users", ["ip_address", "last_ip", "last_login", "user_agent", "device_info"]),
+        ("users", ["ip_address", "last_ip", "last_login", "user_agent", "device_info", "cloud_enabled"]),
         ("pastes", ["user_id", "creator_ip"]),
     ]:
         existing = {r[1] for r in db.execute(f"PRAGMA table_info({table})").fetchall()}
@@ -413,7 +418,8 @@ def api_logout():
 def api_me():
     user = get_current_user()
     if user:
-        return jsonify({"username": user["username"], "id": user["id"]})
+        return jsonify({"username": user["username"], "id": user["id"],
+                        "cloud_enabled": bool(user["cloud_enabled"]) if "cloud_enabled" in user.keys() else False})
     return jsonify({"username": None})
 
 @app.route("/api/device-info", methods=["POST"])
@@ -494,7 +500,7 @@ def api_admin_users():
     if not is_admin():
         return jsonify({"error": "Unauthorized"}), 403
     db = get_db()
-    users = db.execute("SELECT id, username, ip_address, last_ip, last_login, user_agent, device_info, created_at FROM users ORDER BY id").fetchall()
+    users = db.execute("SELECT id, username, ip_address, last_ip, last_login, user_agent, device_info, cloud_enabled, created_at FROM users ORDER BY id").fetchall()
     db.close()
     return jsonify([dict(u) for u in users])
 
@@ -662,6 +668,47 @@ def admin_ip_info(ip):
     db.close()
     info["users"] = [dict(u) for u in users]
     return jsonify(info)
+
+@app.route("/api/admin/toggle-cloud/<int:user_id>", methods=["POST"])
+def admin_toggle_cloud(user_id):
+    if not is_admin():
+        return jsonify({"error": "Unauthorized"}), 403
+    db = get_db()
+    current = db.execute("SELECT cloud_enabled FROM users WHERE id = ?", (user_id,)).fetchone()
+    new_val = 0 if (current and current["cloud_enabled"]) else 1
+    db.execute("UPDATE users SET cloud_enabled = ? WHERE id = ?", (new_val, user_id))
+    db.commit()
+    db.close()
+    return jsonify({"ok": True, "cloud_enabled": bool(new_val)})
+
+@app.route("/api/paste/cloud/<paste_id>", methods=["POST"])
+def cloud_save_paste(paste_id):
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "Login required"}), 401
+    # Check if user has cloud permission
+    db = get_db()
+    perm = db.execute("SELECT cloud_enabled FROM users WHERE id = ?", (user["id"],)).fetchone()
+    if not perm or not perm["cloud_enabled"]:
+        db.close()
+        return jsonify({"error": "Cloud not enabled for your account"}), 403
+    # Get paste content
+    paste = db.execute("SELECT * FROM pastes WHERE id = ?", (paste_id,)).fetchone()
+    db.close()
+    if not paste:
+        return jsonify({"error": "Paste not found"}), 404
+    try:
+        content = decrypt(paste["content"])
+    except:
+        return jsonify({"error": "Decryption failed"}), 500
+    # Save to cloud folder
+    cloud_dir = DATA_DIR / "cloud" / user["username"]
+    cloud_dir.mkdir(parents=True, exist_ok=True)
+    if paste["type"] == "text":
+        (cloud_dir / f"{paste_id}.txt").write_bytes(content)
+    else:
+        (cloud_dir / (paste["filename"] or paste_id)).write_bytes(content)
+    return jsonify({"ok": True, "path": str(cloud_dir)})
 
 @app.route("/api/admin/reset-pw/<int:user_id>", methods=["POST"])
 def admin_reset_password(user_id):

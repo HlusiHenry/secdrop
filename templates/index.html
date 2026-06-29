@@ -393,6 +393,7 @@
       <button class="btn btn-sm" onclick="copyUrl()">📋 Copy</button>
       <button class="btn btn-sm" onclick="openUrl()">↗ Open</button>
       <button class="btn btn-sm" onclick="showQR()">📱 QR</button>
+      <button class="btn btn-sm" onclick="cloudSave()" id="cloud-btn" style="display:none;border-color:var(--cyan);color:var(--cyan)">☁️ Cloud</button>
     </div>
     <img class="qr" id="qr-img" style="display:none">
   </div>  <!-- result -->
@@ -614,6 +615,17 @@ function showResult(data) {
   div.dataset.id = data.id;
   div.classList.add('visible');
   document.getElementById('qr-img').style.display = 'none';
+  // Show cloud button if user has permission (check via /api/me for cloud info)
+  fetch('/api/me').then(r=>r.json()).then(u => {
+    if (u.cloud_enabled) document.getElementById('cloud-btn').style.display = '';
+  }).catch(()=>{});
+}
+
+async function cloudSave() {
+  const id = document.getElementById('result').dataset.id;
+  const r = await fetch('/api/paste/cloud/'+id, {method:'POST'});
+  const d = await r.json();
+  toast(d.ok ? 'Saved to cloud!' : (d.error || 'Error'), !d.ok);
 }
 
 function copyUrl() {
