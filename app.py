@@ -518,6 +518,23 @@ def api_admin_pastes():
     db.close()
     return jsonify([dict(p) for p in pastes])
 
+@app.route("/api/admin/delete-paste/<paste_id>", methods=["POST"])
+def admin_delete_paste(paste_id):
+    if not is_admin():
+        return jsonify({"error": "Unauthorized"}), 403
+    db = get_db()
+    paste = db.execute("SELECT * FROM pastes WHERE id = ?", (paste_id,)).fetchone()
+    if not paste:
+        db.close()
+        return jsonify({"error": "Not found"}), 404
+    if paste["type"] == "file":
+        fp = FILES_DIR / paste_id
+        if fp.exists(): fp.unlink()
+    db.execute("DELETE FROM pastes WHERE id = ?", (paste_id,))
+    db.commit()
+    db.close()
+    return jsonify({"ok": True})
+
 @app.route("/api/admin/extend/<paste_id>", methods=["POST"])
 def admin_extend_paste(paste_id):
     if not is_admin():

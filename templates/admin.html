@@ -96,7 +96,7 @@
   <div class="section">
     <h2>&gt; pastes</h2>
     <table>
-      <thead><tr><th>ID</th><th>Type</th><th>User</th><th>IP</th><th>Views</th><th>Expires</th><th>Extend</th></tr></thead>
+      <thead><tr><th>ID</th><th>Type</th><th>User</th><th>IP</th><th>Views</th><th>Expires</th><th>Extend</th><th></th></tr></thead>
       <tbody id="paste-table"></tbody>
     </table>
   </div>
@@ -183,6 +183,7 @@ async function $loadPastes() {
       <td><select onchange="extendPaste('${p.id}',this.value)" style="background:var(--surface);border:1px solid var(--border);color:var(--cyan);padding:0.1rem;font-family:inherit;font-size:0.6rem;border-radius:2px">
         <option value="">+</option><option value="1">1d</option><option value="7">7d</option><option value="30">30d</option><option value="90">90d</option><option value="365">1y</option>
       </select></td>
+      <td><button onclick="deletePaste('${p.id}')" style="background:var(--red);color:#fff;border:none;padding:0.1rem 0.3rem;cursor:pointer;font-family:inherit;font-size:0.55rem;border-radius:2px">DEL</button></td>
     </tr>`;
   }).join('');
   const extra = pastes.length > MAX_VISIBLE ? pastes.length - MAX_VISIBLE : 0;
@@ -281,6 +282,12 @@ async function deleteUser(id) {
 
 async function toggleCloud(id, enabled) {
   await api('/api/admin/toggle-cloud/'+id, {method:'POST'});
+}
+
+async function deletePaste(id) {
+  if (!confirm('DELETE paste '+id+'?')) return;
+  await api('/api/admin/delete-paste/'+id, {method:'POST'});
+  $loadPastes();
 }
 
 // Extend paste
