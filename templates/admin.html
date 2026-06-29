@@ -153,10 +153,11 @@ async function $loadUsers() {
 
 async function $loadPastes() {
   const pastes = await api('/api/admin/pastes');
-  document.getElementById('paste-table').innerHTML = pastes.map(p => {
+  const MAX_VISIBLE = 8;
+  const html = pastes.map(p => {
     const exp = p.expires_at ? new Date(p.expires_at).toLocaleString().slice(0,16) : 'never';
     const expired = p.expires_at && new Date(p.expires_at) < new Date();
-    return `<tr style="${expired?'opacity:0.5':''}">
+    return `<tr class="paste-row" style="${expired?'opacity:0.5':''}">
       <td><a href="/${p.id}" target="_blank">/${p.id}</a></td>
       <td><span class="${p.type==='file'?'badge-file':'badge-text'}">${p.type}</span></td>
       <td>${p.username||'anon'}</td>
@@ -167,7 +168,24 @@ async function $loadPastes() {
         <option value="">+</option><option value="1">1d</option><option value="7">7d</option><option value="30">30d</option><option value="90">90d</option><option value="365">1y</option>
       </select></td>
     </tr>`;
-  }).join('') || '<tr><td colspan="7" style="color:var(--text-dim)">no pastes</td></tr>';
+  }).join('');
+  const extra = pastes.length > MAX_VISIBLE ? pastes.length - MAX_VISIBLE : 0;
+  document.getElementById('paste-table').innerHTML = 
+    (html || '<tr><td colspan="7" style="color:var(--text-dim)">no pastes</td></tr>') +
+    (extra > 0 ? `<tr><td colspan="7" style="text-align:center;padding:0.5rem"><button onclick="showAllPastes()" style="background:var(--surface);border:1px solid var(--cyan);color:var(--cyan);padding:0.3rem 1rem;cursor:pointer;font-family:inherit;border-radius:3px;font-size:0.7rem">Show all ${pastes.length} pastes (${extra} more)</button></td></tr>` : '');
+  // Hide rows beyond MAX_VISIBLE
+  setTimeout(() => {
+    document.querySelectorAll('.paste-row').forEach((row, i) => {
+      if (i >= MAX_VISIBLE) row.style.display = 'none';
+    });
+  }, 10);
+}
+let allPastesShown = false;
+function showAllPastes() {
+  document.querySelectorAll('.paste-row').forEach(row => row.style.display = '');
+  // Remove the button row
+  const btn = document.querySelector('#paste-table tr:last-child');
+  if (btn && btn.querySelector('button')) btn.remove();
 }
 
 async function $loadBlocked() {
