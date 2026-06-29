@@ -6,63 +6,59 @@
 <title>SecDrop — Admin</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
-  :root { --bg:#0a0a0a; --surface:#111; --border:#1a1a1a; --green:#00ff41; --green-dim:#003b1e; --amber:#ffb000; --red:#ff3333; --cyan:#00e5ff; --text:#c0c0c0; --text-dim:#666; --radius:6px; }
+  :root { --bg:#0a0a0a; --surface:#111; --border:#1a1a1a; --green:#00ff41; --amber:#ffb000; --red:#ff3333; --cyan:#00e5ff; --text:#c0c0c0; --text-dim:#666; --radius:6px; }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    background:var(--bg); color:var(--text);
-    font-family:'JetBrains Mono',monospace; min-height:100vh;
-  }
-  body::after {
-    content:''; position:fixed; top:0; left:0; width:100%; height:100%;
-    background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);
-    pointer-events:none; z-index:999;
-  }
-  .container { max-width:1100px; margin:0 auto; padding:2rem 1.5rem; position:relative;z-index:1; }
+  body { background:var(--bg); color:var(--text); font-family:'JetBrains Mono',monospace; min-height:100vh; }
+  body::after { content:''; position:fixed; top:0; left:0; width:100%; height:100%; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px); pointer-events:none; z-index:999; }
+  .container { max-width:1200px; margin:0 auto; padding:2rem 1.5rem; position:relative;z-index:1; }
   header { text-align:center; margin-bottom:2rem; border-bottom:1px solid var(--border); padding-bottom:1rem; }
-  header h1 { color:var(--amber); font-size:1.8rem; letter-spacing:3px; }
+  header h1 { color:var(--amber); font-size:1.5rem; letter-spacing:3px; }
   header a { color:var(--green); text-decoration:none; font-size:0.75rem; }
-  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:0.8rem; margin-bottom:2rem; }
-  .stat-card {
-    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
-    padding:1rem; text-align:center;
-  }
+  .btn-row { display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap; margin-top:0.5rem; }
+  .btn-row button, .btn-row .btn-a { background:transparent; border:1px solid var(--green); color:var(--green); padding:0.3rem 0.8rem; cursor:pointer; font-family:inherit; font-size:0.7rem; border-radius:3px; text-decoration:none; }
+  .btn-row .btn-a-danger { border-color:var(--red); color:var(--red); }
+  .btn-row button:hover { opacity:0.8; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:0.8rem; margin-bottom:2rem; }
+  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1rem; text-align:center; }
   .stat-card .num { font-size:2rem; font-weight:700; color:var(--cyan); }
-  .stat-card .label { font-size:0.7rem; color:var(--text-dim); letter-spacing:1px; margin-top:0.3rem; }
+  .stat-card .label { font-size:0.65rem; color:var(--text-dim); letter-spacing:1px; margin-top:0.3rem; }
   .section { margin-bottom:2rem; }
   .section h2 { color:var(--green); font-size:1rem; letter-spacing:2px; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem; }
-  table { width:100%; border-collapse:collapse; font-size:0.8rem; }
-  th { text-align:left; color:var(--text-dim); padding:0.5rem; border-bottom:1px solid var(--border); font-size:0.7rem; letter-spacing:1px; }
-  td { padding:0.5rem; border-bottom:1px solid var(--border); word-break:break-all; }
+  table { width:100%; border-collapse:collapse; font-size:0.75rem; }
+  th { text-align:left; color:var(--text-dim); padding:0.4rem; border-bottom:1px solid var(--border); font-size:0.65rem; letter-spacing:1px; }
+  td { padding:0.4rem; border-bottom:1px solid var(--border); }
   tr:hover { background:rgba(0,255,65,0.03); }
-  .badge { font-size:0.65rem; padding:0.15rem 0.5rem; border-radius:3px; }
-  .badge-admin { background:var(--amber); color:#000; }
-  .badge-user { background:var(--surface); color:var(--text-dim); border:1px solid var(--border); }
-  .badge-text { color:var(--cyan); }
-  .badge-file { color:var(--amber); }
   a { color:var(--cyan); text-decoration:none; }
   a:hover { color:var(--green); }
-  .refresh { color:var(--text-dim); font-size:0.7rem; cursor:pointer; }
+  .ip-link { color:var(--cyan) !important; cursor:pointer; }
+  .badge-text { color:var(--cyan); font-size:0.65rem; }
+  .badge-file { color:var(--amber); font-size:0.65rem; }
+  .admin-pw-box { background:var(--surface); border:1px solid var(--amber); border-radius:var(--radius); padding:1rem; margin-bottom:1.5rem; max-width:400px; margin-left:auto; margin-right:auto; display:none; }
+  .admin-pw-box input { width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:0.4rem; font-family:inherit; margin-bottom:0.3rem; border-radius:var(--radius); }
+  .admin-pw-box button { width:100%; background:transparent; border:1px solid var(--amber); color:var(--amber); padding:0.4rem; cursor:pointer; font-family:inherit; border-radius:var(--radius); }
+  .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:1000; justify-content:center; align-items:center; }
+  .modal { background:var(--surface); border:1px solid var(--cyan); border-radius:var(--radius); padding:1.5rem; max-width:450px; width:90%; }
+  .modal button { margin-top:0.5rem; margin-right:0.3rem; padding:0.3rem 0.8rem; cursor:pointer; font-family:inherit; font-size:0.7rem; border-radius:3px; border:none; }
 </style>
 </head>
 <body>
 <div class="container">
   <header>
     <h1>▸ ADMIN DASHBOARD</h1>
-    <a href="/">← back to sec/drop</a>
-    <span class="refresh" onclick="togglePwChange()" style="margin-left:1rem;color:var(--amber)">[change admin pw]</span>
-    <button onclick="clearLocks()" style="background:var(--green);color:#000;border:none;padding:0.2rem 0.6rem;cursor:pointer;font-family:inherit;font-size:0.7rem;border-radius:3px;margin-left:0.5rem">CLEAR LOCKS</button>
-    <div id="default-pw-warning" style="margin-top:0.5rem;padding:0.3rem;background:rgba(255,51,51,0.1);border:1px solid var(--red);border-radius:3px;color:var(--red);font-size:0.7rem;display:none">
-      ⚠ DEFAULT PASSWORD STILL ACTIVE! Change it now via [change admin pw]
+    <a href="/">← back</a>
+    <div class="btn-row">
+      <button onclick="toggleAdminPw()">CHANGE ADMIN PW</button>
+      <button onclick="clearAllLocks()" style="border-color:var(--green);color:var(--green)">CLEAR ALL LOCKS</button>
     </div>
   </header>
 
-  <div id="admin-pw-panel" style="display:none;background:var(--surface);border:1px solid var(--amber);border-radius:var(--radius);padding:1rem;margin-bottom:1.5rem;max-width:400px;margin-left:auto;margin-right:auto">
-    <div style="color:var(--amber);margin-bottom:0.8rem;font-size:0.85rem">&gt; change_admin_password</div>
-    <input type="password" id="adm-old-pw" placeholder="Current admin password" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem;font-family:inherit;margin-bottom:0.4rem;border-radius:var(--radius)">
-    <input type="password" id="adm-new-pw" placeholder="New admin password (min 4)" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem;font-family:inherit;margin-bottom:0.4rem;border-radius:var(--radius)">
-    <input type="password" id="adm-new-pw2" placeholder="Repeat new password" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem;font-family:inherit;margin-bottom:0.5rem;border-radius:var(--radius)">
-    <button onclick="changeAdminPw()" style="background:transparent;border:1px solid var(--amber);color:var(--amber);padding:0.5rem 1.5rem;cursor:pointer;font-family:inherit;border-radius:var(--radius);width:100%">SAVE</button>
-    <div id="admin-pw-msg" style="font-size:0.7rem;margin-top:0.5rem;display:none"></div>
+  <div class="admin-pw-box" id="admin-pw-box">
+    <div style="color:var(--amber);margin-bottom:0.8rem;font-size:0.8rem">&gt; change_admin_password</div>
+    <input type="password" id="adm-old-pw" placeholder="Current password">
+    <input type="password" id="adm-new-pw" placeholder="New password (min 4)">
+    <input type="password" id="adm-new-pw2" placeholder="Repeat">
+    <button onclick="saveAdminPw()">SAVE</button>
+    <div id="admin-pw-msg" style="font-size:0.65rem;margin-top:0.5rem;display:none"></div>
   </div>
 
   <div class="stats" id="stats">
@@ -71,223 +67,185 @@
     <div class="stat-card"><div class="num">-</div><div class="label">TEXT</div></div>
     <div class="stat-card"><div class="num">-</div><div class="label">FILES</div></div>
     <div class="stat-card"><div class="num">-</div><div class="label">VIEWS</div></div>
-    <div class="stat-card"><div class="num">-</div><div class="label">🔒 PW PROTECTED</div></div>
-    <div class="stat-card"><div class="num">-</div><div class="label">🚫 LOGIN LOCKS</div></div>
-    <div class="stat-card"><div class="num">-</div><div class="label">🛑 REG BLOCKS</div></div>
+    <div class="stat-card"><div class="num">-</div><div class="label">PW PROTECTED</div></div>
+    <div class="stat-card"><div class="num">-</div><div class="label">LOGIN LOCKS</div></div>
+    <div class="stat-card"><div class="num">-</div><div class="label">REG BLOCKS</div></div>
   </div>
 
   <div class="section">
     <h2>&gt; users</h2>
     <table>
-      <thead><tr><th>ID</th><th>Username</th><th>Browser/OS</th><th>IP</th><th>Last Login</th><th>Actions</th></tr></thead>
-      <tbody id="user-table"><tr><td colspan="6" style="color:var(--text-dim)">loading...</td></tr></tbody>
+      <thead><tr><th>ID</th><th>Username</th><th>Reg IP</th><th>Last IP</th><th>Last Login</th><th>Actions</th></tr></thead>
+      <tbody id="user-table"></tbody>
     </table>
   </div>
 
   <div class="section">
-    <h2>&gt; all_pastes</h2>
+    <h2>&gt; pastes</h2>
     <table>
-      <thead><tr><th>ID</th><th>Type</th><th>User</th><th>IP</th><th>Views</th><th>Expires</th><th>Actions</th></tr></thead>
-      <tbody id="paste-table"><tr><td colspan="7" style="color:var(--text-dim)">loading...</td></tr></tbody>
+      <thead><tr><th>ID</th><th>Type</th><th>User</th><th>IP</th><th>Views</th><th>Expires</th><th>Extend</th></tr></thead>
+      <tbody id="paste-table"></tbody>
     </table>
   </div>
 
   <div class="section">
-    <h2>&gt; blocked_ips</h2>
-    <div id="blocked-list" style="font-size:0.8rem;color:var(--red)">none</div>
+    <h2>&gt; blocked</h2>
+    <div id="blocked-list" style="font-size:0.75rem;color:var(--red)">none</div>
   </div>
+</div>
 
-  <!-- IP Info Modal -->
-  <div id="ip-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:1000;justify-content:center;align-items:center">
-    <div style="background:var(--surface);border:1px solid var(--cyan);border-radius:var(--radius);padding:2rem;max-width:450px;width:90%">
-      <div style="color:var(--cyan);font-size:1rem;margin-bottom:1rem">&gt; ip_details</div>
-      <div id="ip-detail-content" style="font-size:0.8rem;line-height:1.8">loading...</div>
-      <div style="margin-top:1rem">
-        <button id="ip-modal-block" style="background:var(--red);color:#fff;border:none;padding:0.4rem 1rem;cursor:pointer;font-family:inherit;border-radius:3px;margin-right:0.5rem">BLOCK</button>
-        <button id="ip-modal-unblock" style="background:var(--green);color:#000;border:none;padding:0.4rem 1rem;cursor:pointer;font-family:inherit;border-radius:3px;margin-right:0.5rem">UNBLOCK</button>
-        <button onclick="closeIpModal()" style="background:transparent;border:1px solid var(--text-dim);color:var(--text-dim);padding:0.4rem 1rem;cursor:pointer;font-family:inherit;border-radius:3px">CLOSE</button>
-      </div>
+<div class="modal-overlay" id="ip-modal">
+  <div class="modal">
+    <div style="color:var(--cyan);font-size:0.9rem;margin-bottom:0.8rem">&gt; ip_details</div>
+    <div id="ip-detail-content"></div>
+    <div>
+      <button onclick="blockCurrentIp()" style="background:var(--red);color:#fff">BLOCK IP</button>
+      <button onclick="unblockCurrentIp()" style="background:var(--green);color:#000">UNBLOCK</button>
+      <button onclick="closeIpModal()" style="background:transparent;border:1px solid var(--text-dim);color:var(--text-dim)">CLOSE</button>
     </div>
   </div>
 </div>
 
 <script>
-const ngrokSkip = {headers:{'ngrok-skip-browser-warning':'1'}};
+const H = {'ngrok-skip-browser-warning':'1'};
+let curIp = '';
 
-async function loadStats() {
-  const r = await fetch('/api/admin/stats', ngrokSkip);
-  const s = await r.json();
-  document.querySelectorAll('.stat-card .num').forEach((el,i) => {
-    const vals = [s.total_users, s.total_pastes, s.text_pastes, s.file_pastes, s.total_views, s.password_protected, s.locked_logins, s.blocked_reg_ips];
-    el.textContent = vals[i] ?? '-';
-  });
+async function api(url, opts={}) {
+  opts.headers = {...(opts.headers||{}), ...H};
+  const r = await fetch(url, opts);
+  return r.json();
 }
 
-async function loadUsers() {
-  const r = await fetch('/api/admin/users', ngrokSkip);
-  const users = await r.json();
-  document.getElementById('user-table').innerHTML = users.map(u => {
-    const lastLogin = (u.last_login||'').slice(0,16) || '-';
-    const ua = ((u.user_agent||'') + ' ' + (u.device_info||'')).slice(0,80);
-    return `<tr>
-      <td>${u.id}</td><td>${u.id===1?'👑 ':''}${u.username}</td>
-      <td style="font-size:0.6rem;max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${ua}">${ua||'-'}</td>
-      <td style="font-size:0.65rem"><a href="#" data-ip="${u.last_ip||u.ip_address||''}" class="ip-link" style="color:var(--cyan)">${u.last_ip||u.ip_address||'-'}</a></td>
-      <td style="font-size:0.7rem">${lastLogin}</td>
+function $loadStats(s) {
+  const vals = [s.total_users, s.total_pastes, s.text_pastes, s.file_pastes, s.total_views, s.password_protected, s.locked_logins, s.blocked_reg_ips];
+  document.querySelectorAll('.stat-card .num').forEach((el,i) => el.textContent = vals[i] ?? '-');
+}
+
+async function $loadUsers() {
+  const users = await api('/api/admin/users');
+  document.getElementById('user-table').innerHTML = users.map(u => `
+    <tr>
+      <td>${u.id}</td>
+      <td>${u.id===1?'👑 ':''}${u.username}</td>
+      <td class="ip-link" data-ip="${u.ip_address||''}">${u.ip_address||'-'}</td>
+      <td class="ip-link" data-ip="${u.last_ip||''}">${u.last_ip||'-'}</td>
+      <td>${(u.last_login||'').slice(0,16)||'-'}</td>
       <td>
-        <button onclick="resetPw(${u.id})" style="background:var(--amber);color:#000;border:none;padding:0.2rem 0.5rem;cursor:pointer;font-family:inherit;font-size:0.65rem;border-radius:3px">RESET</button>
-        ${u.id!==1 ? `<button onclick="deleteUser(${u.id})" style="background:var(--red);color:#fff;border:none;padding:0.2rem 0.5rem;cursor:pointer;font-family:inherit;font-size:0.65rem;border-radius:3px;margin-left:0.3rem">DEL</button>` : ''}
+        <button onclick="resetPw(${u.id})" style="background:var(--amber);color:#000;border:none;padding:0.15rem 0.4rem;cursor:pointer;font-family:inherit;font-size:0.6rem;border-radius:2px">RESET</button>
+        ${u.id!==1?`<button onclick="deleteUser(${u.id})" style="background:var(--red);color:#fff;border:none;padding:0.15rem 0.4rem;cursor:pointer;font-family:inherit;font-size:0.6rem;border-radius:2px;margin-left:0.2rem">DEL</button>`:''}
       </td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="6" style="color:var(--text-dim)">no users</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="6" style="color:var(--text-dim)">no users</td></tr>';
 }
 
-async function loadPastes() {
-  const r = await fetch('/api/admin/pastes', ngrokSkip);
-  const pastes = await r.json();
+async function $loadPastes() {
+  const pastes = await api('/api/admin/pastes');
   document.getElementById('paste-table').innerHTML = pastes.map(p => {
     const exp = p.expires_at ? new Date(p.expires_at).toLocaleString().slice(0,16) : 'never';
     const expired = p.expires_at && new Date(p.expires_at) < new Date();
     return `<tr style="${expired?'opacity:0.5':''}">
       <td><a href="/${p.id}" target="_blank">/${p.id}</a></td>
-      <td><span class="badge ${p.type==='file'?'badge-file':'badge-text'}">${p.type}</span></td>
+      <td><span class="${p.type==='file'?'badge-file':'badge-text'}">${p.type}</span></td>
       <td>${p.username||'anon'}</td>
-      <td style="font-size:0.65rem"><a href="#" data-ip="${p.creator_ip||''}" class="ip-link" style="color:var(--cyan)">${p.creator_ip||'-'}</a></td>
+      <td class="ip-link" data-ip="${p.creator_ip||''}">${p.creator_ip||'-'}</td>
       <td>${p.views}</td>
-      <td style="font-size:0.7rem;color:${expired?'var(--red)':'var(--text-dim)'}">${exp}</td>
-      <td><select onchange="extendPaste('${p.id}', this.value)" style="background:var(--surface);border:1px solid var(--border);color:var(--cyan);padding:0.15rem;font-family:inherit;font-size:0.6rem;border-radius:3px;cursor:pointer">
-        <option value="">+extend</option>
-        <option value="1">+1d</option>
-        <option value="7">+7d</option>
-        <option value="30">+30d</option>
-        <option value="90">+90d</option>
-        <option value="365">+1y</option>
+      <td style="color:${expired?'var(--red)':'var(--text-dim)'}">${exp}</td>
+      <td><select onchange="extendPaste('${p.id}',this.value)" style="background:var(--surface);border:1px solid var(--border);color:var(--cyan);padding:0.1rem;font-family:inherit;font-size:0.6rem;border-radius:2px">
+        <option value="">+</option><option value="1">1d</option><option value="7">7d</option><option value="30">30d</option><option value="90">90d</option><option value="365">1y</option>
       </select></td>
     </tr>`;
   }).join('') || '<tr><td colspan="7" style="color:var(--text-dim)">no pastes</td></tr>';
 }
 
-async function loadBlocked() {
-  const r = await fetch('/api/admin/blocked', ngrokSkip);
-  const blocked = await r.json();
+async function $loadBlocked() {
+  const blocked = await api('/api/admin/blocked');
   document.getElementById('blocked-list').innerHTML = blocked.length
-    ? blocked.map(b => `<div style="margin-bottom:0.3rem">🚫 <a href="#" onclick="showIpInfo('${b.target}')" style="color:var(--red)">${b.target}</a> (${b.type}: ${b.attempts}) 
-        <button onclick="permaBlock('${b.target}')" style="background:var(--red);color:#fff;border:none;padding:0.1rem 0.3rem;cursor:pointer;font-size:0.6rem;border-radius:2px">BLOCK</button>
-        <button onclick="permaUnblock('${b.target}')" style="background:var(--green);color:#000;border:none;padding:0.1rem 0.3rem;cursor:pointer;font-size:0.6rem;border-radius:2px">UNBLOCK</button>
-      </div>`).join('')
-    : '<span style="color:var(--text-dim)">none</span>';
+    ? blocked.map(b => `<div style="margin-bottom:0.2rem">🚫 ${b.target} (${b.type}:${b.attempts}) 
+        <button onclick="blockIp('${b.target}')" style="background:var(--red);color:#fff;border:none;padding:0.1rem 0.3rem;cursor:pointer;font-family:inherit;font-size:0.55rem;border-radius:2px">BLOCK</button>
+        <button onclick="unblockIp('${b.target}')" style="background:var(--green);color:#000;border:none;padding:0.1rem 0.3rem;cursor:pointer;font-family:inherit;font-size:0.55rem;border-radius:2px">UNBLOCK</button></div>`).join('')
+    : 'none';
 }
 
-let currentIpInfo = '';
+async function loadAll() {
+  const [s] = await Promise.all([api('/api/admin/stats'), $loadUsers(), $loadPastes(), $loadBlocked()]);
+  $loadStats(s);
+  // Reload others after stats
+  $loadUsers(); $loadPastes(); $loadBlocked();
+}
+loadAll();
+
+// IP modal
+document.addEventListener('click', e => {
+  const ip = e.target.closest('.ip-link')?.dataset.ip;
+  if (ip) { curIp = ip; showIpInfo(ip); }
+});
 
 async function showIpInfo(ip) {
-  if (!ip || ip==='?' || ip==='-') return;
-  currentIpInfo = ip;
   document.getElementById('ip-modal').style.display = 'flex';
   document.getElementById('ip-detail-content').textContent = 'loading...';
   try {
-    const r = await fetch('/api/admin/ip-info/'+ip);
-    const d = await r.json();
-    let html = 
-      `<b>IP:</b> ${d.query||ip}<br>`+
-      `<b>Country:</b> ${d.country||'?'} (${d.countryCode||''})<br>`+
-      `<b>City:</b> ${d.city||'?'}, ${d.regionName||''}<br>`+
-      `<b>ISP:</b> ${d.isp||'?'}<br>`+
-      `<b>Org:</b> ${d.org||'?'}<br>`+
-      `<b>Timezone:</b> ${d.timezone||'?'}`;
-    if (d.users && d.users.length) {
-      html += '<br><br><b>👤 Users on this IP:</b><br>';
+    const d = await api('/api/admin/ip-info/'+ip);
+    let h = `<b>IP:</b> ${d.query||ip}<br><b>Country:</b> ${d.country||'?'} (${d.countryCode||''})<br><b>City:</b> ${d.city||'?'}, ${d.regionName||''}<br><b>ISP:</b> ${d.isp||'?'}<br><b>Org:</b> ${d.org||'?'}<br><b>TZ:</b> ${d.timezone||'?'}`;
+    if (d.users?.length) {
+      h += '<br><br><b>👤 Users:</b>';
       d.users.forEach(u => {
-        html += `<br>— <b>${u.username}</b><br>`;
-        if (u.user_agent) html += `  UA: ${u.user_agent.slice(0,80)}<br>`;
-        if (u.device_info) html += `  Device: ${u.device_info}<br>`;
+        h += `<br>— <b>${u.username}</b>`;
+        if (u.user_agent) h += `<br><small>${u.user_agent.slice(0,80)}</small>`;
+        if (u.device_info) h += `<br><small>${u.device_info}</small>`;
       });
     }
-    document.getElementById('ip-detail-content').innerHTML = html;
-  } catch(e) { document.getElementById('ip-detail-content').textContent = 'Failed to load'; }
+    document.getElementById('ip-detail-content').innerHTML = h;
+  } catch(e) { document.getElementById('ip-detail-content').textContent = 'Failed'; }
 }
-
 function closeIpModal() { document.getElementById('ip-modal').style.display = 'none'; }
+async function blockCurrentIp() { await api('/api/admin/block-ip', {method:'POST', body:JSON.stringify({ip:curIp})}); closeIpModal(); $loadBlocked(); }
+async function unblockCurrentIp() { await api('/api/admin/unblock-ip', {method:'POST', body:JSON.stringify({ip:curIp})}); closeIpModal(); $loadBlocked(); }
+async function blockIp(ip) { await api('/api/admin/block-ip', {method:'POST', body:JSON.stringify({ip})}); $loadBlocked(); }
+async function unblockIp(ip) { await api('/api/admin/unblock-ip', {method:'POST', body:JSON.stringify({ip})}); $loadBlocked(); }
 
-async function permaBlock(ip) {
-  await fetch('/api/admin/block-ip', {...ngrokSkip, method:'POST', headers:{...ngrokSkip.headers, 'Content-Type':'application/json'}, body:JSON.stringify({ip})});
-  loadBlocked();
+// Clear locks
+async function clearAllLocks() {
+  await api('/api/admin/clear-locks', {method:'POST'});
+  const s = await api('/api/admin/stats');
+  $loadStats(s);
+  $loadBlocked();
 }
 
-async function permaUnblock(ip) {
-  await fetch('/api/admin/unblock-ip', {...ngrokSkip, method:'POST', headers:{...ngrokSkip.headers, 'Content-Type':'application/json'}, body:JSON.stringify({ip})});
-  loadBlocked();
-}
-
-async function clearLocks() {
-  await fetch('/api/admin/clear-locks', {...ngrokSkip, method:'POST'});
-  loadBlocked();
-  loadStats();
-}
-
-// Block/unblock from modal
-document.getElementById('ip-modal-block').addEventListener('click', () => { permaBlock(currentIpInfo); closeIpModal(); });
-document.getElementById('ip-modal-unblock').addEventListener('click', () => { permaUnblock(currentIpInfo); closeIpModal(); });
-
-async function extendPaste(id, days) {
-  if (!days) return;
-  await fetch('/api/admin/extend/'+id, {...ngrokSkip, method:'POST', headers:{...ngrokSkip.headers, 'Content-Type':'application/json'}, body:JSON.stringify({days:parseInt(days)})});
-  loadPastes();
-}
-
-async function loadAll() { await Promise.all([loadStats(), loadUsers(), loadPastes(), loadBlocked(), checkDefaultPw()]); }
-loadAll();
-
-// IP link click handler (via delegation, safe for IPv6 and nested elements)
-document.addEventListener('click', function(e) {
-  const link = e.target.closest('.ip-link');
-  if (link) {
-    e.preventDefault();
-    const ip = link.getAttribute('data-ip');
-    if (ip) showIpInfo(ip);
-  }
-});
-
-async function checkDefaultPw() {
-  const r = await fetch('/api/admin/is-default-pw');
-  const d = await r.json();
-  if (d.is_default) document.getElementById('default-pw-warning').style.display = 'block';
-}
-
-async function resetPw(userId) {
-  const pw = prompt('New password for user #'+userId+' (min 3 chars):');
+// User management
+async function resetPw(id) {
+  const pw = prompt('New password (min 3):');
   if (!pw) return;
-  const r = await fetch('/api/admin/reset-pw/'+userId, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({new_password:pw})});
-  const d = await r.json();
-  alert(d.ok ? 'Password reset OK!' : (d.error || 'Error'));
+  const d = await api('/api/admin/reset-pw/'+id, {method:'POST', body:JSON.stringify({new_password:pw})});
+  alert(d.ok ? 'OK' : (d.error||'Error'));
 }
-
-async function deleteUser(userId) {
-  if (!confirm('DELETE user #'+userId+'? This cannot be undone.')) return;
-  const r = await fetch('/api/admin/delete-user/'+userId, {method:'POST'});
-  const d = await r.json();
-  if (d.ok) { loadUsers(); loadStats(); }
+async function deleteUser(id) {
+  if (!confirm('DELETE user #'+id+'?')) return;
+  const d = await api('/api/admin/delete-user/'+id, {method:'POST'});
+  if (d.ok) loadAll();
   else alert(d.error);
 }
 
-function togglePwChange() {
-  const p = document.getElementById('admin-pw-panel');
-  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+// Extend paste
+async function extendPaste(id, days) {
+  if (!days) return;
+  await api('/api/admin/extend/'+id, {method:'POST', body:JSON.stringify({days:parseInt(days)})});
+  $loadPastes();
 }
 
-async function changeAdminPw() {
+// Admin password
+function toggleAdminPw() {
+  const b = document.getElementById('admin-pw-box');
+  b.style.display = b.style.display === 'none' ? 'block' : 'none';
+}
+async function saveAdminPw() {
   const oldPw = document.getElementById('adm-old-pw').value;
   const newPw = document.getElementById('adm-new-pw').value;
   const newPw2 = document.getElementById('adm-new-pw2').value;
   const msg = document.getElementById('admin-pw-msg');
-  if (newPw !== newPw2) { msg.textContent = "Passwords don't match"; msg.style.color='var(--red)'; msg.style.display='block'; return; }
-  try {
-    const r = await fetch('/api/admin/change-pw', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({old_password:oldPw, new_password:newPw})});
-    const d = await r.json();
-    msg.textContent = d.error || d.message || 'Changed! Restart not needed.';
-    msg.style.color = r.ok ? 'var(--green)' : 'var(--red)';
-    msg.style.display = 'block';
-  } catch(e) { msg.textContent = 'Error'; msg.style.color='var(--red)'; msg.style.display='block'; }
+  if (newPw !== newPw2) { msg.textContent = "Don't match"; msg.style.color='var(--red)'; msg.style.display='block'; return; }
+  const d = await api('/api/admin/change-pw', {method:'POST', body:JSON.stringify({old_password:oldPw, new_password:newPw})});
+  msg.textContent = d.error || 'Saved!';
+  msg.style.color = d.ok ? 'var(--green)' : 'var(--red)';
+  msg.style.display = 'block';
 }
 </script>
 </body>
