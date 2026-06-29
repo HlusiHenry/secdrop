@@ -73,21 +73,25 @@ def _handle_admin_command(chat_id, text, user):
         unblock_ip(ip)
         send_message(chat_id, f"✅ IP <code>{ip}</code> freigegeben.")
     elif text == "/locks":
-        from app import _login_fails, _admin_fails, _register_times, _upload_counts
-        lines = ["🔒 <b>Aktive Locks:</b>"]
+        from app import _login_fails, _admin_fails, _register_times, _upload_counts, _request_counts, MAX_LOGIN_FAILS, MAX_REGISTERS_PER_MIN, UPLOAD_LIMIT_PER_HOUR, MAX_REQUESTS_PER_MIN
+        lines = ["🔒 <b>Sperren:</b>"]
+        any_found = False
         for k, v in _login_fails.items():
             recent = [t for t in v if time.time() - t < 60]
-            if len(recent) >= 5: lines.append(f"  Login-Lock: {k} ({len(recent)})")
-        if _admin_fails:
-            recent = [t for t in _admin_fails if time.time() - t < 60]
-            if len(recent) >= 5: lines.append(f"  Admin-Lock ({len(recent)})")
+            if recent: lines.append(f"  Login {k}: {len(recent)}/{MAX_LOGIN_FAILS}{' 🚫' if len(recent)>=MAX_LOGIN_FAILS else ''}"); any_found = True
+        recent_admin = [t for t in _admin_fails if time.time() - t < 60]
+        if recent_admin: lines.append(f"  Admin: {len(recent_admin)}/{MAX_LOGIN_FAILS}{' 🚫' if len(recent_admin)>=MAX_LOGIN_FAILS else ''}"); any_found = True
         for k, v in _register_times.items():
             recent = [t for t in v if time.time() - t < 60]
-            if len(recent) >= 5: lines.append(f"  Reg-Flood: {k} ({len(recent)})")
+            if recent: lines.append(f"  Reg {k}: {len(recent)}/{MAX_REGISTERS_PER_MIN}{' 🚫' if len(recent)>=MAX_REGISTERS_PER_MIN else ''}"); any_found = True
         for k, v in _upload_counts.items():
             recent = [t for t in v if time.time() - t < 3600]
-            if len(recent) >= 30: lines.append(f"  Upload-Limit: {k} ({len(recent)})")
-        send_message(chat_id, "\n".join(lines) if len(lines) > 1 else "✅ Keine aktiven Locks.")
+            if recent: lines.append(f"  Upload {k}: {len(recent)}/{UPLOAD_LIMIT_PER_HOUR}{' 🚫' if len(recent)>=UPLOAD_LIMIT_PER_HOUR else ''}"); any_found = True
+        for k, v in _request_counts.items():
+            recent = [t for t in v if time.time() - t < 60]
+            if recent: lines.append(f"  Req {k}: {len(recent)}/{MAX_REQUESTS_PER_MIN}{' 🚫' if len(recent)>=MAX_REQUESTS_PER_MIN else ''}"); any_found = True
+        if not any_found: lines.append("  ✅ Keine Aktivität")
+        send_message(chat_id, "\n".join(lines))
     elif text.startswith("/paste "):
         content = text.split(" ", 1)[1]
         import secrets
@@ -118,7 +122,7 @@ def bot_loop():
             _process_notifications()
         except Exception as e:
             print(f"[BOT] Error: {e}")
-            time.sleep(5)
+            time.sleep(10)  # avoid tight loop on error
 
 def start_bot():
     if TOKEN:
