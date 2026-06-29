@@ -70,7 +70,7 @@
     <div class="stat-card"><div class="num">-</div><div class="label">TEXT</div></div>
     <div class="stat-card"><div class="num">-</div><div class="label">FILES</div></div>
     <div class="stat-card"><div class="num">-</div><div class="label">VIEWS</div></div>
-    <div class="stat-card"><div class="num">-</div><div class="label">🔒 LOCKED</div></div>
+    <div class="stat-card"><div class="num">-</div><div class="label">🔒 PW PROTECTED</div></div>
     <div class="stat-card"><div class="num">-</div><div class="label">🚫 LOGIN LOCKS</div></div>
     <div class="stat-card"><div class="num">-</div><div class="label">🛑 REG BLOCKS</div></div>
   </div>
@@ -140,7 +140,14 @@ async function loadPastes() {
       <td style="font-size:0.65rem">${p.creator_ip||'-'}</td>
       <td>${p.views}</td>
       <td style="font-size:0.7rem;color:${expired?'var(--red)':'var(--text-dim)'}">${exp}</td>
-      <td><button onclick="extendPaste('${p.id}')" style="background:var(--cyan);color:#000;border:none;padding:0.2rem 0.5rem;cursor:pointer;font-family:inherit;font-size:0.65rem;border-radius:3px">+7d</button></td>
+      <td><select onchange="extendPaste('${p.id}', this.value)" style="background:var(--surface);border:1px solid var(--border);color:var(--cyan);padding:0.15rem;font-family:inherit;font-size:0.6rem;border-radius:3px;cursor:pointer">
+        <option value="">+extend</option>
+        <option value="1">+1d</option>
+        <option value="7">+7d</option>
+        <option value="30">+30d</option>
+        <option value="90">+90d</option>
+        <option value="365">+1y</option>
+      </select></td>
     </tr>`;
   }).join('') || '<tr><td colspan="7" style="color:var(--text-dim)">no pastes</td></tr>';
 }
@@ -153,8 +160,7 @@ async function loadBlocked() {
     : '<span style="color:var(--text-dim)">none</span>';
 }
 
-async function extendPaste(id) {
-  const days = prompt('Extend by how many days?', '7');
+async function extendPaste(id, days) {
   if (!days) return;
   await fetch('/api/admin/extend/'+id, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({days:parseInt(days)})});
   loadPastes();

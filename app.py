@@ -448,9 +448,10 @@ def api_admin_stats():
         return jsonify({"error": "Unauthorized"}), 403
     db = get_db()
     now = time.time()
-    # Count currently locked IPs/usernames for login
+    # Count currently locked IPs/usernames for login (including admin)
     locked_logins = sum(1 for k, v in _login_fails.items()
                         if len([t for t in v if now - t < PASSWORD_LOCKOUT_SECS]) >= MAX_LOGIN_FAILS)
+    admin_locked = 1 if len([t for t in _admin_fails if now - t < PASSWORD_LOCKOUT_SECS]) >= MAX_LOGIN_FAILS else 0
     blocked_reg_ips = sum(1 for k, v in _register_times.items()
                           if len([t for t in v if now - t < 60]) >= MAX_REGISTERS_PER_MIN)
     stats = {
@@ -461,7 +462,7 @@ def api_admin_stats():
         "total_views": db.execute("SELECT COALESCE(SUM(views),0) as c FROM pastes").fetchone()["c"],
         "password_protected": db.execute("SELECT COUNT(*) as c FROM pastes WHERE password_hash IS NOT NULL").fetchone()["c"],
         "burn_after": db.execute("SELECT COUNT(*) as c FROM pastes WHERE burn_after=1").fetchone()["c"],
-        "locked_logins": locked_logins,
+        "locked_logins": locked_logins + admin_locked,
         "blocked_reg_ips": blocked_reg_ips,
     }
     db.close()
@@ -483,6 +484,10 @@ def api_admin_blocked():
         recent = [t for t in attempts if now - t < PASSWORD_LOCKOUT_SECS]
         if len(recent) >= MAX_LOGIN_FAILS:
             blocked.append({"target": key, "attempts": len(recent), "type": "login"})
+    # Admin fails
+    recent_admin = [t for t in _admin_fails if now - t < PASSWORD_LOCKOUT_SECS]
+    if len(recent_admin) >= MAX_LOGIN_FAILS:
+        blocked.append({"target": "ADMIN_LOGIN", "attempts": len(recent_admin), "type": "admin"})
     for ip, times in _register_times.items():
         recent = [t for t in times if now - t < 60]
         if len(recent) >= MAX_REGISTERS_PER_MIN:
@@ -540,6 +545,8 @@ def index():
 @app.route("/api/paste", methods=["POST"])
 def create_paste():
     user = get_current_user()
+    if not user:
+        return jsonify({"error": "Login required to create pastes"}), 401
     cleanup_expired()
     paste_id = generate_id()
     paste_type = request.form.get("type", "text")
