@@ -195,6 +195,8 @@ def is_ip_blocked(ip: str) -> bool:
 def block_ip(ip: str):
     _ip_blocklist.add(ip)
     BLOCKLIST_FILE.write_text("\n".join(_ip_blocklist))
+    from bot import notify
+    notify(f"🚫 <b>IP blockiert:</b> <code>{ip}</code>")
 
 def unblock_ip(ip: str):
     _ip_blocklist.discard(ip)
@@ -367,6 +369,8 @@ def register():
     user = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
     db.close()
     session["user_id"] = user["id"]
+    from bot import notify
+    notify(f"🆕 <b>New user:</b> {username} from <code>{ip}</code>")
     return jsonify({"username": user["username"], "id": user["id"]})
 
 @app.route("/api/login", methods=["POST"])
@@ -915,5 +919,7 @@ if __name__ == "__main__":
     ╚══════════════════════════════════════════════╝
     """)
     from waitress import serve
+    from bot import start_bot, notify
+    start_bot()
     serve(app, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)),
           clear_untrusted_proxy_headers=False)
