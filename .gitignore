@@ -5,3 +5,5 @@ secdrop.db-wal
 .admin_pw
 .admin_pw
 .blocklist
+__pycache__/
+*.pyc
