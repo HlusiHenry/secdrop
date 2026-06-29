@@ -2,3 +2,4 @@
 secdrop.db
 secdrop.db-shm
 secdrop.db-wal
+.admin_pw
