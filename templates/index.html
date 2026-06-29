@@ -402,6 +402,12 @@
   <div class="recent" id="my-pastes-section">
     <h3>&gt; my_pastes</h3>
     <div id="my-pastes"></div>
+  </div>  <!-- my-pastes-section -->
+
+  <!-- My Cloud -->
+  <div class="recent" id="my-cloud-section">
+    <h3>&gt; my_cloud <span id="cloud-count" style="color:var(--text-dim);font-weight:400"></span></h3>
+    <div id="my-cloud"></div>
   </div>
 
 </div>  <!-- main-panel -->
@@ -441,6 +447,7 @@ async function checkAuth() {
       document.getElementById('profile-link').style.display = 'inline';
       document.getElementById('admin-link').style.display = 'inline';
       loadMyPastes();
+      loadMyCloud();
     } else {
       currentUser = null;
       document.getElementById('auth-panel').style.display = 'block';
@@ -514,16 +521,33 @@ async function loadMyPastes() {
     const r = await fetch('/api/pastes');
     const pastes = await r.json();
     const div = document.getElementById('my-pastes');
-    if (!pastes.length) { div.innerHTML = '<span style="color:var(--text-dim);font-size:0.8rem">no pastes yet</span>'; return; }
-    div.innerHTML = pastes.map(p => 
-      `<div class="recent-item">
-        <a href="/${p.id}">/${p.id}</a>
-        <span class="meta">${p.type} · ${p.views}v · ${p.created_at||''}</span>
-      </div>`
-    ).join('');
+    if (!pastes.length) { div.innerHTML = '<span style="color:var(--text-dim)">no pastes</span>'; return; }
+    div.innerHTML = pastes.map(p => `
+      <div class="paste-item">
+        <a href="/${p.id}" class="paste-link">/${p.id}</a>
+        <span class="paste-type">${p.type}</span>
+        <span class="paste-meta">${p.views}v · ${p.expires_at?.slice(0,10)||'never'}</span>
+      </div>
+    `).join('');
   } catch(e) {}
 }
 
+async function loadMyCloud() {
+  try {
+    const r = await fetch('/api/cloud');
+    const files = await r.json();
+    const div = document.getElementById('my-cloud');
+    document.getElementById('cloud-count').textContent = `(${files.length})`;
+    if (!files.length) { div.innerHTML = '<span style="color:var(--text-dim)">no cloud files — create a paste and click ☁️</span>'; return; }
+    div.innerHTML = files.map(f => `
+      <div class="paste-item">
+        <span>📄 ${f.name}</span>
+        <span class="paste-meta">${(f.size/1024).toFixed(1)} KB</span>
+        <a href="/api/cloud/download/${f.name}" class="paste-link" style="margin-left:auto">⬇ download</a>
+      </div>
+    `).join('');
+  } catch(e) {}
+}
 // Auth tabs
 document.querySelectorAll('#auth-panel .tab').forEach(t => {
   t.addEventListener('click', () => {

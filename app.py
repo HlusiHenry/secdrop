@@ -727,6 +727,34 @@ def cloud_save_paste(paste_id):
         (cloud_dir / (paste["filename"] or paste_id)).write_bytes(content)
     return jsonify({"ok": True, "path": str(cloud_dir)})
 
+@app.route("/api/cloud")
+def list_cloud_files():
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "Login required"}), 401
+    cloud_dir = DATA_DIR / "cloud" / user["username"]
+    if not cloud_dir.exists():
+        return jsonify([])
+    files = []
+    for f in sorted(cloud_dir.iterdir(), key=lambda x: -x.stat().st_mtime):
+        if f.is_file():
+            files.append({"name": f.name, "size": f.stat().st_size, "modified": f.stat().st_mtime})
+    return jsonify(files[:50])
+
+@app.route("/api/cloud/download/<filename>")
+def download_cloud_file(filename):
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "Login required"}), 401
+    # Secure: prevent path traversal
+    if ".." in filename or "/" in filename:
+        return jsonify({"error": "Invalid filename"}), 400
+    cloud_dir = DATA_DIR / "cloud" / user["username"]
+    path = cloud_dir / filename
+    if not path.exists():
+        return jsonify({"error": "File not found"}), 404
+    return send_file(path, as_attachment=True, download_name=filename)
+
 @app.route("/api/admin/reset-pw/<int:user_id>", methods=["POST"])
 def admin_reset_password(user_id):
     if not is_admin():
