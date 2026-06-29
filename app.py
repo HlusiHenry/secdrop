@@ -579,7 +579,19 @@ def admin_clear_locks():
     _login_fails.clear()
     _admin_fails.clear()
     _register_times.clear()
+    _upload_counts.clear()
+    _request_counts.clear()
     return jsonify({"ok": True, "message": "All temporary locks cleared"})
+
+@app.route("/api/admin/unlock/<target>", methods=["POST"])
+def admin_unlock_target(target):
+    if not is_admin():
+        return jsonify({"error": "Unauthorized"}), 403
+    # target is the identifier from blocked list (username, ip, etc.)
+    _login_fails.pop(target, None)
+    _register_times.pop(target, None)
+    _upload_counts.pop(target, None)
+    return jsonify({"ok": True})
 
 @app.route("/api/admin/block-ip", methods=["POST"])
 def admin_block_ip():

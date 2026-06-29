@@ -160,9 +160,15 @@ async function $loadPastes() {
 async function $loadBlocked() {
   const blocked = await api('/api/admin/blocked');
   document.getElementById('blocked-list').innerHTML = blocked.length
-    ? blocked.map(b => `<div style="margin-bottom:0.2rem">🚫 ${b.target} (${b.type}:${b.attempts}) 
+    ? blocked.map(b => {
+        const isPerma = b.type === 'permablock';
+        return `<div style="margin-bottom:0.2rem">🚫 ${b.target} (${b.type}:${b.attempts}) 
         <button onclick="blockIp('${b.target}')" style="background:var(--red);color:#fff;border:none;padding:0.1rem 0.3rem;cursor:pointer;font-family:inherit;font-size:0.55rem;border-radius:2px">BLOCK</button>
-        <button onclick="unblockIp('${b.target}')" style="background:var(--green);color:#000;border:none;padding:0.1rem 0.3rem;cursor:pointer;font-family:inherit;font-size:0.55rem;border-radius:2px">UNBLOCK</button></div>`).join('')
+        ${isPerma 
+          ? `<button onclick="unblockIp('${b.target}')" style="background:var(--green);color:#000;border:none;padding:0.1rem 0.3rem;cursor:pointer;font-family:inherit;font-size:0.55rem;border-radius:2px">UNBLOCK</button>`
+          : `<button onclick="unlockTarget('${b.target}')" style="background:var(--green);color:#000;border:none;padding:0.1rem 0.3rem;cursor:pointer;font-family:inherit;font-size:0.55rem;border-radius:2px">UNLOCK</button>`
+        }</div>`;
+      }).join('')
     : 'none';
 }
 
@@ -202,6 +208,7 @@ async function blockCurrentIp() { await api('/api/admin/block-ip', {method:'POST
 async function unblockCurrentIp() { await api('/api/admin/unblock-ip', {method:'POST', body:JSON.stringify({ip:curIp})}); closeIpModal(); $loadBlocked(); }
 async function blockIp(ip) { await api('/api/admin/block-ip', {method:'POST', body:JSON.stringify({ip})}); $loadBlocked(); }
 async function unblockIp(ip) { await api('/api/admin/unblock-ip', {method:'POST', body:JSON.stringify({ip})}); $loadBlocked(); }
+async function unlockTarget(target) { await api('/api/admin/unlock/'+target, {method:'POST'}); $loadBlocked(); loadAll(); }
 
 // Clear locks
 async function clearAllLocks() {
