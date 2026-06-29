@@ -112,6 +112,7 @@ let curIp = '';
 
 async function api(url, opts={}) {
   opts.headers = {...(opts.headers||{}), ...H};
+  if (opts.body) opts.headers['Content-Type'] = 'application/json';
   const r = await fetch(url, opts);
   return r.json();
 }
