@@ -369,13 +369,24 @@ def change_password():
 def is_admin():
     return session.get("admin_ok") == True
 
+_admin_fails: list[float] = []  # timestamps of failed admin login attempts
+
 @app.route("/admin", methods=["GET", "POST"])
 def admin_dashboard():
     if request.method == "POST":
+        # Rate limiting for admin login
+        now = time.time()
+        global _admin_fails
+        _admin_fails[:] = [t for t in _admin_fails if now - t < PASSWORD_LOCKOUT_SECS]
+        if len(_admin_fails) >= MAX_LOGIN_FAILS:
+            remaining = int(PASSWORD_LOCKOUT_SECS - (now - _admin_fails[0]))
+            return render_template("admin_login.html", error=f"Too many attempts. Wait {remaining}s.")
+
         pw = (request.form.get("password") or "").strip()
         if pw == ADMIN_PW:
             session["admin_ok"] = True
         else:
+            _admin_fails.append(now)
             return render_template("admin_login.html", error="Wrong admin password")
 
     if not is_admin():
@@ -455,6 +466,12 @@ def api_admin_stats():
     }
     db.close()
     return jsonify(stats)
+
+@app.route("/api/admin/is-default-pw")
+def api_admin_default_pw():
+    if not is_admin():
+        return jsonify({"error": "Unauthorized"}), 403
+    return jsonify({"is_default": ADMIN_PW == "secdrop"})
 
 @app.route("/api/admin/blocked")
 def api_admin_blocked():

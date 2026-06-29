@@ -50,6 +50,9 @@
     <h1>▸ ADMIN DASHBOARD</h1>
     <a href="/">← back to sec/drop</a>
     <span class="refresh" onclick="togglePwChange()" style="margin-left:1rem;color:var(--amber)">[change admin pw]</span>
+    <div id="default-pw-warning" style="margin-top:0.5rem;padding:0.3rem;background:rgba(255,51,51,0.1);border:1px solid var(--red);border-radius:3px;color:var(--red);font-size:0.7rem;display:none">
+      ⚠ DEFAULT PASSWORD STILL ACTIVE! Change it now via [change admin pw]
+    </div>
   </header>
 
   <div id="admin-pw-panel" style="display:none;background:var(--surface);border:1px solid var(--amber);border-radius:var(--radius);padding:1rem;margin-bottom:1.5rem;max-width:400px;margin-left:auto;margin-right:auto">
@@ -157,8 +160,14 @@ async function extendPaste(id) {
   loadPastes();
 }
 
-async function loadAll() { await Promise.all([loadStats(), loadUsers(), loadPastes(), loadBlocked()]); }
+async function loadAll() { await Promise.all([loadStats(), loadUsers(), loadPastes(), loadBlocked(), checkDefaultPw()]); }
 loadAll();
+
+async function checkDefaultPw() {
+  const r = await fetch('/api/admin/is-default-pw');
+  const d = await r.json();
+  if (d.is_default) document.getElementById('default-pw-warning').style.display = 'block';
+}
 
 async function resetPw(userId) {
   const pw = prompt('New password for user #'+userId+' (min 3 chars):');
