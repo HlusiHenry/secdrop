@@ -1,2 +1,4 @@
 .seckey
 secdrop.db
+secdrop.db-shm
+secdrop.db-wal
