@@ -50,6 +50,7 @@
     <h1>▸ ADMIN DASHBOARD</h1>
     <a href="/">← back to sec/drop</a>
     <span class="refresh" onclick="togglePwChange()" style="margin-left:1rem;color:var(--amber)">[change admin pw]</span>
+    <span class="refresh" onclick="clearLocks()" style="margin-left:1rem;color:var(--green);cursor:pointer">[clear locks]</span>
     <div id="default-pw-warning" style="margin-top:0.5rem;padding:0.3rem;background:rgba(255,51,51,0.1);border:1px solid var(--red);border-radius:3px;color:var(--red);font-size:0.7rem;display:none">
       ⚠ DEFAULT PASSWORD STILL ACTIVE! Change it now via [change admin pw]
     </div>
@@ -218,6 +219,12 @@ async function permaBlock(ip) {
 async function permaUnblock(ip) {
   await fetch('/api/admin/unblock-ip', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ip})});
   loadBlocked();
+}
+
+async function clearLocks() {
+  await fetch('/api/admin/clear-locks', {method:'POST'});
+  loadBlocked();
+  loadStats();
 }
 
 // Block/unblock from modal

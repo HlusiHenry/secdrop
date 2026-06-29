@@ -572,6 +572,15 @@ def api_admin_blocked():
         blocked.append({"target": ip, "attempts": 0, "type": "permablock"})
     return jsonify(blocked)
 
+@app.route("/api/admin/clear-locks", methods=["POST"])
+def admin_clear_locks():
+    if not is_admin():
+        return jsonify({"error": "Unauthorized"}), 403
+    _login_fails.clear()
+    _admin_fails.clear()
+    _register_times.clear()
+    return jsonify({"ok": True, "message": "All temporary locks cleared"})
+
 @app.route("/api/admin/block-ip", methods=["POST"])
 def admin_block_ip():
     if not is_admin():
