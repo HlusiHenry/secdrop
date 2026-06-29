@@ -221,8 +221,8 @@ async function $loadCloud() {
       <td style="font-size:0.7rem">${f.filename}</td>
       <td style="font-size:0.7rem">${(f.size/1024).toFixed(1)} KB</td>
       <td>
-        <button onclick="previewCloud('${f.username}','${f.filename}')" style="background:var(--cyan);color:#000;border:none;padding:0.3rem 0.6rem;cursor:pointer;font-family:inherit;font-size:0.65rem;border-radius:3px;margin-right:0.3rem">👁 PREVIEW</button>
-        <a href="/api/cloud/download/${f.filename}" style="background:var(--green);color:#000;border:none;padding:0.3rem 0.8rem;text-decoration:none;font-family:inherit;font-size:0.65rem;border-radius:3px">⬇ DOWNLOAD</a>
+        <a href="#" onclick="previewCloud('${f.username}','${f.filename}');return false" style="color:var(--cyan);font-size:0.7rem;margin-right:0.8rem">PREVIEW</a>
+        <a href="/api/cloud/download/${f.filename}" style="color:var(--green);font-size:0.7rem">DOWNLOAD</a>
       </td>
     </tr>`).join('')
     : '<tr><td colspan="4" style="color:var(--text-dim)">no cloud files</td></tr>';
