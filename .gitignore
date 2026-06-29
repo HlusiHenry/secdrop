@@ -3,3 +3,5 @@ secdrop.db
 secdrop.db-shm
 secdrop.db-wal
 .admin_pw
+.admin_pw
+.blocklist

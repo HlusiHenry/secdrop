@@ -95,6 +95,19 @@
     <h2>&gt; blocked_ips</h2>
     <div id="blocked-list" style="font-size:0.8rem;color:var(--red)">none</div>
   </div>
+
+  <!-- IP Info Modal -->
+  <div id="ip-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:1000;justify-content:center;align-items:center">
+    <div style="background:var(--surface);border:1px solid var(--cyan);border-radius:var(--radius);padding:2rem;max-width:450px;width:90%">
+      <div style="color:var(--cyan);font-size:1rem;margin-bottom:1rem">&gt; ip_details</div>
+      <div id="ip-detail-content" style="font-size:0.8rem;line-height:1.8">loading...</div>
+      <div style="margin-top:1rem">
+        <button id="ip-modal-block" style="background:var(--red);color:#fff;border:none;padding:0.4rem 1rem;cursor:pointer;font-family:inherit;border-radius:3px;margin-right:0.5rem">BLOCK</button>
+        <button id="ip-modal-unblock" style="background:var(--green);color:#000;border:none;padding:0.4rem 1rem;cursor:pointer;font-family:inherit;border-radius:3px;margin-right:0.5rem">UNBLOCK</button>
+        <button onclick="closeIpModal()" style="background:transparent;border:1px solid var(--text-dim);color:var(--text-dim);padding:0.4rem 1rem;cursor:pointer;font-family:inherit;border-radius:3px">CLOSE</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -116,8 +129,8 @@ async function loadUsers() {
     const lastLogin = (u.last_login||'').slice(0,16) || '-';
     return `<tr>
       <td>${u.id}</td><td>${u.id===1?'👑 ':''}${u.username}</td>
-      <td style="font-size:0.7rem">${u.ip_address||'-'}</td>
-      <td style="font-size:0.7rem">${u.last_ip||'-'}</td>
+      <td style="font-size:0.7rem"><a href="#" onclick="showIpInfo('${u.ip_address||'?'}')" style="color:var(--cyan)">${u.ip_address||'-'}</a></td>
+      <td style="font-size:0.7rem"><a href="#" onclick="showIpInfo('${u.last_ip||'?'}')" style="color:var(--cyan)">${u.last_ip||'-'}</a></td>
       <td style="font-size:0.7rem">${lastLogin}</td>
       <td>
         <button onclick="resetPw(${u.id})" style="background:var(--amber);color:#000;border:none;padding:0.2rem 0.5rem;cursor:pointer;font-family:inherit;font-size:0.65rem;border-radius:3px">RESET</button>
@@ -137,7 +150,7 @@ async function loadPastes() {
       <td><a href="/${p.id}" target="_blank">/${p.id}</a></td>
       <td><span class="badge ${p.type==='file'?'badge-file':'badge-text'}">${p.type}</span></td>
       <td>${p.username||'anon'}</td>
-      <td style="font-size:0.65rem">${p.creator_ip||'-'}</td>
+      <td style="font-size:0.65rem"><a href="#" onclick="showIpInfo('${p.creator_ip||'?'}')" style="color:var(--cyan)">${p.creator_ip||'-'}</a></td>
       <td>${p.views}</td>
       <td style="font-size:0.7rem;color:${expired?'var(--red)':'var(--text-dim)'}">${exp}</td>
       <td><select onchange="extendPaste('${p.id}', this.value)" style="background:var(--surface);border:1px solid var(--border);color:var(--cyan);padding:0.15rem;font-family:inherit;font-size:0.6rem;border-radius:3px;cursor:pointer">
@@ -156,9 +169,49 @@ async function loadBlocked() {
   const r = await fetch('/api/admin/blocked', ngrokSkip);
   const blocked = await r.json();
   document.getElementById('blocked-list').innerHTML = blocked.length
-    ? blocked.map(b => `<div>🚫 ${b.target} (${b.type}: ${b.attempts} attempts)</div>`).join('')
+    ? blocked.map(b => `<div style="margin-bottom:0.3rem">🚫 <a href="#" onclick="showIpInfo('${b.target}')" style="color:var(--red)">${b.target}</a> (${b.type}: ${b.attempts}) 
+        <button onclick="permaBlock('${b.target}')" style="background:var(--red);color:#fff;border:none;padding:0.1rem 0.3rem;cursor:pointer;font-size:0.6rem;border-radius:2px">BLOCK</button>
+        <button onclick="permaUnblock('${b.target}')" style="background:var(--green);color:#000;border:none;padding:0.1rem 0.3rem;cursor:pointer;font-size:0.6rem;border-radius:2px">UNBLOCK</button>
+      </div>`).join('')
     : '<span style="color:var(--text-dim)">none</span>';
 }
+
+let currentIpInfo = '';
+
+async function showIpInfo(ip) {
+  if (!ip || ip==='?' || ip==='-') return;
+  currentIpInfo = ip;
+  document.getElementById('ip-modal').style.display = 'flex';
+  document.getElementById('ip-detail-content').textContent = 'loading...';
+  try {
+    const r = await fetch('/api/admin/ip-info/'+ip);
+    const d = await r.json();
+    document.getElementById('ip-detail-content').innerHTML = 
+      `<b>IP:</b> ${d.query||ip}<br>`+
+      `<b>Country:</b> ${d.country||'?'} (${d.countryCode||''})<br>`+
+      `<b>City:</b> ${d.city||'?'}, ${d.regionName||''}<br>`+
+      `<b>ISP:</b> ${d.isp||'?'}<br>`+
+      `<b>Org:</b> ${d.org||'?'}<br>`+
+      `<b>AS:</b> ${d.as||'?'}<br>`+
+      `<b>Timezone:</b> ${d.timezone||'?'}`;
+  } catch(e) { document.getElementById('ip-detail-content').textContent = 'Failed to load'; }
+}
+
+function closeIpModal() { document.getElementById('ip-modal').style.display = 'none'; }
+
+async function permaBlock(ip) {
+  await fetch('/api/admin/block-ip', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ip})});
+  loadBlocked();
+}
+
+async function permaUnblock(ip) {
+  await fetch('/api/admin/unblock-ip', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ip})});
+  loadBlocked();
+}
+
+// Block/unblock from modal
+document.getElementById('ip-modal-block').addEventListener('click', () => { permaBlock(currentIpInfo); closeIpModal(); });
+document.getElementById('ip-modal-unblock').addEventListener('click', () => { permaUnblock(currentIpInfo); closeIpModal(); });
 
 async function extendPaste(id, days) {
   if (!days) return;

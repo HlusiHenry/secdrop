@@ -118,6 +118,12 @@ else:
     ADMIN_PW = os.environ.get("SECDROP_ADMIN_PW", "secdrop").strip()
 
 # ── Security headers ────────────────────────────────────────
+@app.before_request
+def check_blocklist():
+    ip = get_client_ip()
+    if is_ip_blocked(ip) and not request.path.startswith("/api/admin"):
+        return jsonify({"error": "Your IP is blocked. Contact admin."}), 403
+
 @app.after_request
 def add_security_headers(response):
     response.headers["X-Frame-Options"] = "DENY"
@@ -176,6 +182,43 @@ def check_register_flood(ip: str) -> tuple[bool, str]:
     if len(times) >= MAX_REGISTERS_PER_MIN:
         return False, "Too many registrations. Wait."
     return True, ""
+
+# IP Blocklist (persisted to file)
+BLOCKLIST_FILE = BASE_DIR / ".blocklist"
+_ip_blocklist: set[str] = set()
+if BLOCKLIST_FILE.exists():
+    _ip_blocklist = set(BLOCKLIST_FILE.read_text().strip().splitlines())
+
+def is_ip_blocked(ip: str) -> bool:
+    return ip in _ip_blocklist
+
+def block_ip(ip: str):
+    _ip_blocklist.add(ip)
+    BLOCKLIST_FILE.write_text("\n".join(_ip_blocklist))
+
+def unblock_ip(ip: str):
+    _ip_blocklist.discard(ip)
+    BLOCKLIST_FILE.write_text("\n".join(_ip_blocklist))
+
+# IP Geolocation cache
+_ip_info_cache: dict[str, dict] = {}
+
+def get_ip_info(ip: str) -> dict:
+    if ip in _ip_info_cache:
+        return _ip_info_cache[ip]
+    if ip in ("127.0.0.1", "localhost", "::1"):
+        return {"ip": ip, "city": "Localhost", "country": "🏠", "isp": "Loopback"}
+    try:
+        import urllib.request, json as j
+        url = f"http://ip-api.com/json/{ip}?fields=status,country,countryCode,regionName,city,isp,org,as,query,timezone"
+        req = urllib.request.Request(url, headers={"User-Agent": "SecDrop/1.0"})
+        data = j.loads(urllib.request.urlopen(req, timeout=3).read())
+        if data.get("status") == "success":
+            _ip_info_cache[ip] = data
+            return data
+    except:
+        pass
+    return {"ip": ip, "city": "Unknown", "country": "?", "isp": "Unknown"}
 
 # ── Database ────────────────────────────────────────────────
 def get_db():
@@ -484,7 +527,6 @@ def api_admin_blocked():
         recent = [t for t in attempts if now - t < PASSWORD_LOCKOUT_SECS]
         if len(recent) >= MAX_LOGIN_FAILS:
             blocked.append({"target": key, "attempts": len(recent), "type": "login"})
-    # Admin fails
     recent_admin = [t for t in _admin_fails if now - t < PASSWORD_LOCKOUT_SECS]
     if len(recent_admin) >= MAX_LOGIN_FAILS:
         blocked.append({"target": "ADMIN_LOGIN", "attempts": len(recent_admin), "type": "admin"})
@@ -492,7 +534,35 @@ def api_admin_blocked():
         recent = [t for t in times if now - t < 60]
         if len(recent) >= MAX_REGISTERS_PER_MIN:
             blocked.append({"target": ip, "attempts": len(recent), "type": "register"})
+    # Permanent blocks
+    for ip in _ip_blocklist:
+        blocked.append({"target": ip, "attempts": 0, "type": "permablock"})
     return jsonify(blocked)
+
+@app.route("/api/admin/block-ip", methods=["POST"])
+def admin_block_ip():
+    if not is_admin():
+        return jsonify({"error": "Unauthorized"}), 403
+    data = request.get_json() or {}
+    ip = (data.get("ip") or "").strip()
+    if not ip: return jsonify({"error": "No IP"}), 400
+    block_ip(ip)
+    return jsonify({"ok": True})
+
+@app.route("/api/admin/unblock-ip", methods=["POST"])
+def admin_unblock_ip():
+    if not is_admin():
+        return jsonify({"error": "Unauthorized"}), 403
+    data = request.get_json() or {}
+    ip = (data.get("ip") or "").strip()
+    unblock_ip(ip)
+    return jsonify({"ok": True})
+
+@app.route("/api/admin/ip-info/<ip>")
+def admin_ip_info(ip):
+    if not is_admin():
+        return jsonify({"error": "Unauthorized"}), 403
+    return jsonify(get_ip_info(ip))
 
 @app.route("/api/admin/reset-pw/<int:user_id>", methods=["POST"])
 def admin_reset_password(user_id):
