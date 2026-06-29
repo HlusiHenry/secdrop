@@ -18,8 +18,11 @@ import io
 
 # ── Config ──────────────────────────────────────────────────
 BASE_DIR = Path(__file__).parent.resolve()
-DB_PATH = BASE_DIR / "secdrop.db"
-FILES_DIR = BASE_DIR / "files"
+# Cloud sync: set SECDROP_DATA_DIR to a Dropbox/Drive folder for multi-device use
+DATA_DIR = Path(os.environ.get("SECDROP_DATA_DIR", str(BASE_DIR)))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+DB_PATH = DATA_DIR / "secdrop.db"
+FILES_DIR = DATA_DIR / "files"
 FILES_DIR.mkdir(exist_ok=True)
 BASE_URL = os.environ.get("SECDROP_URL", "").rstrip("/")  # e.g. http://10.117.3.201:5000
 
@@ -97,7 +100,7 @@ def generate_id():
     return f"{a}-{b}-{n}"
 
 # Generate or load Fernet key for encryption
-KEY_FILE = BASE_DIR / ".seckey"
+KEY_FILE = DATA_DIR / ".seckey"
 if KEY_FILE.exists():
     FERNET_KEY = KEY_FILE.read_bytes()
 else:
@@ -111,7 +114,7 @@ app.secret_key = secrets.token_hex(32)  # For session cookies
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10MB
 
 # Admin password (set via env SECDROP_ADMIN_PW or changed via dashboard)
-ADMIN_PW_FILE = BASE_DIR / ".admin_pw"
+ADMIN_PW_FILE = DATA_DIR / ".admin_pw"
 if ADMIN_PW_FILE.exists():
     ADMIN_PW = ADMIN_PW_FILE.read_text().strip()
 else:
@@ -184,7 +187,7 @@ def check_register_flood(ip: str) -> tuple[bool, str]:
     return True, ""
 
 # IP Blocklist (persisted to file)
-BLOCKLIST_FILE = BASE_DIR / ".blocklist"
+BLOCKLIST_FILE = DATA_DIR / ".blocklist"
 _ip_blocklist: set[str] = set()
 if BLOCKLIST_FILE.exists():
     _ip_blocklist = set(BLOCKLIST_FILE.read_text().strip().splitlines())
@@ -889,6 +892,17 @@ def list_pastes():
     db.close()
     return jsonify([dict(p) for p in pastes])
 
+@app.route("/api/telegram-webhook", methods=["POST"])
+def telegram_webhook():
+    data = request.get_json()
+    if data and "message" in data:
+        from bot import process_update
+        try:
+            process_update(data)
+        except Exception as e:
+            print(f"[WEBHOOK] Error: {e}")
+    return jsonify({"ok": True})
+
 @app.route("/api/qr/<paste_id>")
 def qr_code(paste_id):
     base = get_public_url(request)
@@ -919,7 +933,21 @@ if __name__ == "__main__":
     ╚══════════════════════════════════════════════╝
     """)
     from waitress import serve
-    from bot import start_bot, notify
+    from bot import start_bot, notify, setup_webhook
     start_bot()
+    # Register webhook with ngrok URL (if running behind ngrok)
+    public = os.environ.get("SECDROP_PUBLIC_URL", "")
+    if not public:
+        # Try to detect ngrok URL
+        try:
+            import urllib.request, json
+            r = urllib.request.urlopen("http://127.0.0.1:4040/api/tunnels", timeout=2)
+            tunnels = json.loads(r.read()).get("tunnels", [])
+            if tunnels:
+                public = tunnels[0]["public_url"]
+        except:
+            pass
+    if public:
+        setup_webhook(public)
     serve(app, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)),
           clear_untrusted_proxy_headers=False)
