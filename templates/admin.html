@@ -66,7 +66,7 @@
     <div style="color:var(--cyan);margin-bottom:0.8rem;font-size:0.8rem">&gt; rate_limits_config</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;font-size:0.7rem">
       <span>Max login fails:</span><input type="number" id="cfg-login" min="1" max="100" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.2rem;font-family:inherit;border-radius:3px">
-      <span>Max registers/min:</span><input type="number" id="cfg-reg" min="1" max="100" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.2rem;font-family:inherit;border-radius:3px">
+      <span>Max registers/hour:</span><input type="number" id="cfg-reg" min="1" max="100" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.2rem;font-family:inherit;border-radius:3px">
       <span>Max uploads/hour:</span><input type="number" id="cfg-upload" min="1" max="500" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.2rem;font-family:inherit;border-radius:3px">
       <span>Max requests/min:</span><input type="number" id="cfg-req" min="10" max="1000" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.2rem;font-family:inherit;border-radius:3px">
     </div>
@@ -137,8 +137,9 @@ function $loadStats(s) {
 
 async function $loadUsers() {
   const users = await api('/api/admin/users');
-  document.getElementById('user-table').innerHTML = users.map(u => `
-    <tr>
+  const MAX = 5;
+  const html = users.map(u => `
+    <tr class="user-row">
       <td>${u.id}</td>
       <td>${u.id===1?'👑 ':''}${u.username}</td>
       <td class="ip-link" data-ip="${u.ip_address||''}">${u.ip_address||'-'}</td>
@@ -148,7 +149,21 @@ async function $loadUsers() {
         <button onclick="resetPw(${u.id})" style="background:var(--amber);color:#000;border:none;padding:0.15rem 0.4rem;cursor:pointer;font-family:inherit;font-size:0.6rem;border-radius:2px">RESET</button>
         ${u.id!==1?`<button onclick="deleteUser(${u.id})" style="background:var(--red);color:#fff;border:none;padding:0.15rem 0.4rem;cursor:pointer;font-family:inherit;font-size:0.6rem;border-radius:2px;margin-left:0.2rem">DEL</button>`:''}
       </td>
-    </tr>`).join('') || '<tr><td colspan="6" style="color:var(--text-dim)">no users</td></tr>';
+    </tr>`).join('');
+  const extra = users.length > MAX ? users.length - MAX : 0;
+  document.getElementById('user-table').innerHTML = 
+    (html || '<tr><td colspan="6" style="color:var(--text-dim)">no users</td></tr>') +
+    (extra > 0 ? `<tr><td colspan="6" style="text-align:center;padding:0.5rem"><button onclick="showAllUsers()" style="background:var(--surface);border:1px solid var(--cyan);color:var(--cyan);padding:0.3rem 1rem;cursor:pointer;font-family:inherit;border-radius:3px;font-size:0.7rem">Show all ${users.length} users (${extra} more)</button></td></tr>` : '');
+  setTimeout(() => {
+    document.querySelectorAll('.user-row').forEach((row, i) => {
+      if (i >= MAX) row.style.display = 'none';
+    });
+  }, 10);
+}
+function showAllUsers() {
+  document.querySelectorAll('.user-row').forEach(row => row.style.display = '');
+  const btn = document.querySelector('#user-table tr:last-child');
+  if (btn && btn.querySelector('button')) btn.remove();
 }
 
 async function $loadPastes() {

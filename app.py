@@ -178,10 +178,10 @@ def check_login_bruteforce(identifier: str) -> tuple[bool, str]:
     return True, ""
 
 def check_register_flood(ip: str) -> tuple[bool, str]:
-    """Check if this IP is flooding registrations"""
+    """Check if this IP is flooding registrations (per hour)"""
     now = time.time()
     times = _register_times[ip]
-    times[:] = [t for t in times if now - t < 60]
+    times[:] = [t for t in times if now - t < 3600]  # 1 hour window
     if len(times) >= MAX_REGISTERS_PER_MIN:
         return False, "Too many registrations. Wait."
     return True, ""
@@ -571,7 +571,7 @@ def api_admin_blocked():
     if len(recent_admin) >= MAX_LOGIN_FAILS:
         blocked.append({"target": "ADMIN_LOGIN", "attempts": len(recent_admin), "type": "admin"})
     for ip, times in _register_times.items():
-        recent = [t for t in times if now - t < 60]
+        recent = [t for t in times if now - t < 3600]
         if len(recent) >= MAX_REGISTERS_PER_MIN:
             blocked.append({"target": ip, "attempts": len(recent), "type": "register"})
     # Upload limits
