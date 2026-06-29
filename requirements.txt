@@ -1,3 +1,5 @@
 flask>=3.0
 cryptography>=41.0
 qrcode[pil]>=7.4
+gunicorn>=22.0
+waitress>=3.0

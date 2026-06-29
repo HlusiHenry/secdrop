@@ -4,7 +4,7 @@ SecDrop — Self-hosted encrypted pastebin & file drop
 Dark terminal aesthetic. SQLite. No cloud.
 """
 
-import os, sys, time, sqlite3, secrets, hashlib, mimetypes, socket, random
+import os, sys, time, sqlite3, secrets, hashlib, mimetypes, socket, random, re
 from datetime import datetime, timedelta
 from collections import defaultdict
 from pathlib import Path
@@ -103,7 +103,16 @@ else:
 fernet = Fernet(FERNET_KEY)
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100MB
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10MB
+
+# ── Security headers ────────────────────────────────────────
+@app.after_request
+def add_security_headers(response):
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Server"] = ""  # Hide Werkzeug version
+    return response
 
 # ── Rate limiting ────────────────────────────────────────────
 _password_fails: dict[str, list[float]] = defaultdict(list)  # paste_id -> [timestamps]
@@ -229,6 +238,8 @@ def create_paste():
             return jsonify({"error": "No file"}), 400
         data = file.read()
         original_name = file.filename or "unnamed"
+        # Sanitize: strip path, remove HTML/control chars
+        original_name = re.sub(r'[<>"\'\\/\x00-\x1f]', '', original_name)[:255]
         encrypted = encrypt(data)
         db = get_db()
         db.execute(
@@ -382,4 +393,5 @@ if __name__ == "__main__":
     ║  Network: {DETECTED_URL:<42}║
     ╚══════════════════════════════════════════════╝
     """)
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=False)
+    from waitress import serve
+    serve(app, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
