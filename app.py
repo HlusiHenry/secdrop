@@ -652,6 +652,26 @@ def admin_config():
         "requests": MAX_REQUESTS_PER_MIN,
     })
 
+@app.route("/api/admin/cloud")
+def api_admin_cloud():
+    if not is_admin():
+        return jsonify({"error": "Unauthorized"}), 403
+    cloud_base = DATA_DIR / "cloud"
+    if not cloud_base.exists():
+        return jsonify([])
+    files = []
+    for user_dir in sorted(cloud_base.iterdir()):
+        if user_dir.is_dir():
+            for f in sorted(user_dir.iterdir(), key=lambda x: -x.stat().st_mtime):
+                if f.is_file():
+                    files.append({
+                        "username": user_dir.name,
+                        "filename": f.name,
+                        "size": f.stat().st_size,
+                        "modified": f.stat().st_mtime
+                    })
+    return jsonify(files[:100])
+
 @app.route("/api/admin/block-ip", methods=["POST"])
 def admin_block_ip():
     if not is_admin():
