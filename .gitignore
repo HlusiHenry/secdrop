@@ -7,3 +7,4 @@ secdrop.db-wal
 .blocklist
 __pycache__/
 *.pyc
+cloud/
