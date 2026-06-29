@@ -216,7 +216,15 @@ function showAllPastes() {
 async function $loadCloud() {
   const files = await api('/api/admin/cloud');
   document.getElementById('cloud-table').innerHTML = files.length
-    ? files.map(f => `<tr><td>${f.username}</td><td style="font-size:0.7rem">${f.filename}</td><td style="font-size:0.7rem">${(f.size/1024).toFixed(1)} KB</td><td><a href="/api/cloud/download/${f.filename}" download style="color:var(--cyan);font-size:0.65rem">⬇</a></td></tr>`).join('')
+    ? files.map(f => `<tr>
+      <td>${f.username}</td>
+      <td style="font-size:0.7rem">${f.filename}</td>
+      <td style="font-size:0.7rem">${(f.size/1024).toFixed(1)} KB</td>
+      <td>
+        <button onclick="previewCloud('${f.username}','${f.filename}')" style="background:var(--cyan);color:#000;border:none;padding:0.3rem 0.6rem;cursor:pointer;font-family:inherit;font-size:0.65rem;border-radius:3px;margin-right:0.3rem">👁 PREVIEW</button>
+        <a href="/api/cloud/download/${f.filename}" style="background:var(--green);color:#000;border:none;padding:0.3rem 0.8rem;text-decoration:none;font-family:inherit;font-size:0.65rem;border-radius:3px">⬇ DOWNLOAD</a>
+      </td>
+    </tr>`).join('')
     : '<tr><td colspan="4" style="color:var(--text-dim)">no cloud files</td></tr>';
 }
 
@@ -296,6 +304,14 @@ async function deleteUser(id) {
 
 async function toggleCloud(id, enabled) {
   await api('/api/admin/toggle-cloud/'+id, {method:'POST'});
+}
+
+async function previewCloud(user, file) {
+  const d = await api('/api/admin/cloud/preview/'+user+'/'+file);
+  document.getElementById('ip-detail-content').innerHTML = 
+    `<b>${file}</b> (${(d.size/1024).toFixed(1)} KB)<br><br><pre style="white-space:pre-wrap;font-size:0.7rem;max-height:300px;overflow:auto">${d.content||''}</pre>`;
+  document.getElementById('ip-modal').style.display = 'flex';
+  document.querySelector('#ip-modal .modal > div:first-child').textContent = '> cloud_preview';
 }
 
 async function deletePaste(id) {

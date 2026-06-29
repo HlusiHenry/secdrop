@@ -672,6 +672,21 @@ def api_admin_cloud():
                     })
     return jsonify(files[:100])
 
+@app.route("/api/admin/cloud/preview/<username>/<filename>")
+def admin_cloud_preview(username, filename):
+    if not is_admin():
+        return jsonify({"error": "Unauthorized"}), 403
+    if ".." in filename or "/" in filename or ".." in username:
+        return jsonify({"error": "Invalid"}), 400
+    path = DATA_DIR / "cloud" / username / filename
+    if not path.exists():
+        return jsonify({"error": "Not found"}), 404
+    try:
+        content = path.read_text()[:5000]
+        return jsonify({"content": content, "size": path.stat().st_size})
+    except:
+        return jsonify({"content": "[binary file — preview not available]", "size": path.stat().st_size})
+
 @app.route("/api/admin/block-ip", methods=["POST"])
 def admin_block_ip():
     if not is_admin():
