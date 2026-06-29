@@ -131,7 +131,7 @@ async function loadUsers() {
     const dev = (u.device_info||'');
     return `<tr>
       <td>${u.id}</td><td>${u.id===1?'👑 ':''}${u.username}</td>
-      <td style="font-size:0.7rem"><a href="#" onclick="showIpInfo('${u.ip_address||'?'}')" style="color:var(--cyan)">${u.ip_address||'-'}</a></td>
+      <td style="font-size:0.7rem"><a href="#" data-ip="${u.ip_address||''}" class="ip-link" style="color:var(--cyan)">${u.ip_address||'-'}</a></td>
       <td style="font-size:0.6rem;max-width:150px;overflow:hidden;text-overflow:ellipsis" title="${ua}">${ua||'-'}</td>
       <td style="font-size:0.6rem">${dev||'-'}</td>
       <td style="font-size:0.7rem">${lastLogin}</td>
@@ -153,7 +153,7 @@ async function loadPastes() {
       <td><a href="/${p.id}" target="_blank">/${p.id}</a></td>
       <td><span class="badge ${p.type==='file'?'badge-file':'badge-text'}">${p.type}</span></td>
       <td>${p.username||'anon'}</td>
-      <td style="font-size:0.65rem"><a href="#" onclick="showIpInfo('${p.creator_ip||'?'}')" style="color:var(--cyan)">${p.creator_ip||'-'}</a></td>
+      <td style="font-size:0.65rem"><a href="#" data-ip="${p.creator_ip||''}" class="ip-link" style="color:var(--cyan)">${p.creator_ip||'-'}</a></td>
       <td>${p.views}</td>
       <td style="font-size:0.7rem;color:${expired?'var(--red)':'var(--text-dim)'}">${exp}</td>
       <td><select onchange="extendPaste('${p.id}', this.value)" style="background:var(--surface);border:1px solid var(--border);color:var(--cyan);padding:0.15rem;font-family:inherit;font-size:0.6rem;border-radius:3px;cursor:pointer">
@@ -224,6 +224,15 @@ async function extendPaste(id, days) {
 
 async function loadAll() { await Promise.all([loadStats(), loadUsers(), loadPastes(), loadBlocked(), checkDefaultPw()]); }
 loadAll();
+
+// IP link click handler (via delegation, safe for IPv6)
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('ip-link')) {
+    e.preventDefault();
+    const ip = e.target.getAttribute('data-ip');
+    if (ip) showIpInfo(ip);
+  }
+});
 
 async function checkDefaultPw() {
   const r = await fetch('/api/admin/is-default-pw');

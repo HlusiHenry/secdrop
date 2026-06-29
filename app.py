@@ -220,6 +220,26 @@ def get_ip_info(ip: str) -> dict:
         pass
     return {"ip": ip, "city": "Unknown", "country": "?", "isp": "Unknown"}
 
+# Request rate limiting (per IP)
+_request_counts: dict[str, list[float]] = defaultdict(list)
+_upload_counts: dict[str, list[float]] = defaultdict(list)
+MAX_REQUESTS_PER_MIN = 120
+UPLOAD_LIMIT_PER_HOUR = 30
+
+def check_request_flood(ip: str) -> bool:
+    now = time.time()
+    times = _request_counts[ip]
+    times[:] = [t for t in times if now - t < 60]
+    times.append(now)
+    return len(times) > MAX_REQUESTS_PER_MIN
+
+def check_upload_limit(ip: str) -> bool:
+    now = time.time()
+    times = _upload_counts[ip]
+    times[:] = [t for t in times if now - t < 3600]
+    times.append(now)
+    return len(times) > UPLOAD_LIMIT_PER_HOUR
+
 # ── Database ────────────────────────────────────────────────
 def get_db():
     conn = sqlite3.connect(str(DB_PATH))
@@ -630,6 +650,9 @@ def create_paste():
     user = get_current_user()
     if not user:
         return jsonify({"error": "Login required to create pastes"}), 401
+    ip = get_client_ip()
+    if check_upload_limit(ip):
+        return jsonify({"error": "Upload limit reached. Try later."}), 429
     cleanup_expired()
     paste_id = generate_id()
     paste_type = request.form.get("type", "text")
