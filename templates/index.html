@@ -306,9 +306,47 @@
   <header>
     <div class="logo">SEC/DROP</div>
     <div class="subtitle"><span>▶</span> ENCRYPTED PASTEBIN <span>◀</span></div>
+    <div id="user-bar" style="margin-top:0.5rem;font-size:0.75rem;color:var(--text-dim)">
+      <span id="user-name"></span>
+      <a href="#" id="logout-link" style="color:var(--red);margin-left:1rem;display:none">[logout]</a>
+      <a href="#" id="profile-link" style="color:var(--cyan);margin-left:1rem;display:none">[profile]</a>
+      <a href="/admin" id="admin-link" style="color:var(--amber);margin-left:1rem;display:none">[admin]</a>
+    </div>
+    <!-- Profile dropdown -->
+    <div id="profile-panel" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-top:0.5rem;max-width:400px;margin-left:auto;margin-right:auto">
+      <div style="color:var(--green);margin-bottom:1rem;font-size:0.85rem">&gt; change_password</div>
+      <input type="password" id="prof-old-pw" placeholder="Current password" style="margin-bottom:0.4rem">
+      <input type="password" id="prof-new-pw" placeholder="New password (min 3)" style="margin-bottom:0.4rem">
+      <input type="password" id="prof-new-pw2" placeholder="Repeat new password">
+      <button class="btn" id="prof-save-btn" style="width:100%;margin-top:0.5rem;font-size:0.8rem">Save</button>
+      <div id="prof-msg" style="font-size:0.7rem;margin-top:0.5rem;display:none"></div>
+    </div>
   </header>
 
-  <!-- Tabs -->
+  <!-- Auth panel (shown when not logged in) -->
+  <div id="auth-panel">
+    <div class="tabs">
+      <button class="tab active" data-auth="login">&gt; login</button>
+      <button class="tab" data-auth="register">&gt; register</button>
+    </div>
+    <div id="auth-login">
+      <input type="text" id="login-user" placeholder="Username" style="margin-bottom:0.5rem">
+      <input type="password" id="login-pw" placeholder="Password">
+      <button class="btn" id="login-btn" style="width:100%">▸ Login</button>
+      <div id="login-error" style="color:var(--red);font-size:0.75rem;margin-top:0.5rem;display:none"></div>
+    </div>
+    <div id="auth-register" style="display:none">
+      <input type="text" id="reg-user" placeholder="Username (letters, numbers, -,_)" style="margin-bottom:0.5rem">
+      <input type="password" id="reg-pw" placeholder="Password (min 3 chars)">
+      <input type="password" id="reg-pw2" placeholder="Repeat password" style="margin-top:0.5rem">
+      <button class="btn" id="reg-btn" style="width:100%">▸ Register</button>
+      <div id="reg-error" style="color:var(--red);font-size:0.75rem;margin-top:0.5rem;display:none"></div>
+    </div>
+  </div>
+
+  <!-- Main UI (shown when logged in) -->
+  <div id="main-panel" style="display:none">
+
   <div class="tabs">
     <button class="tab active" data-tab="text">&gt; paste_text</button>
     <button class="tab" data-tab="file">&gt; upload_file</button>
@@ -357,15 +395,24 @@
       <button class="btn btn-sm" onclick="showQR()">📱 QR</button>
     </div>
     <img class="qr" id="qr-img" style="display:none">
+  </div>  <!-- result -->
+
+  <!-- My Pastes -->
+  <div class="recent" id="my-pastes-section">
+    <h3>&gt; my_pastes</h3>
+    <div id="my-pastes"></div>
   </div>
 
-</div>
+</div>  <!-- main-panel -->
+
+</div>  <!-- container -->
 
 <div class="toast" id="toast"></div>
 
 <script>
 let currentTab = 'text';
 let selectedFile = null;
+let currentUser = null;
 
 // Ngrok browser warning skip
 const originalFetch = window.fetch;
@@ -378,6 +425,113 @@ window.fetch = function(url, options = {}) {
   }
   return originalFetch.call(this, url, options);
 };
+
+// ── Auth ──
+async function checkAuth() {
+  try {
+    const r = await fetch('/api/me');
+    const data = await r.json();
+    if (data.username) {
+      currentUser = data;
+      document.getElementById('auth-panel').style.display = 'none';
+      document.getElementById('main-panel').style.display = 'block';
+      document.getElementById('user-name').textContent = '👤 ' + data.username;
+      document.getElementById('logout-link').style.display = 'inline';
+      document.getElementById('profile-link').style.display = 'inline';
+      document.getElementById('admin-link').style.display = 'inline';
+      loadMyPastes();
+    } else {
+      currentUser = null;
+      document.getElementById('auth-panel').style.display = 'block';
+      document.getElementById('main-panel').style.display = 'none';
+      document.getElementById('user-name').textContent = '';
+      document.getElementById('logout-link').style.display = 'none';
+      document.getElementById('profile-link').style.display = 'none';
+      document.getElementById('admin-link').style.display = 'none';
+    }
+  } catch(e) {}
+}
+
+document.getElementById('login-btn').addEventListener('click', async () => {
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pw').value;
+  const err = document.getElementById('login-error');
+  try {
+    const r = await fetch('/api/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u,password:p})});
+    const d = await r.json();
+    if (r.ok) { err.style.display='none'; checkAuth(); }
+    else { err.textContent = d.error; err.style.display='block'; }
+  } catch(e) { err.textContent = 'Connection error'; err.style.display='block'; }
+});
+
+document.getElementById('reg-btn').addEventListener('click', async () => {
+  const u = document.getElementById('reg-user').value.trim();
+  const p1 = document.getElementById('reg-pw').value;
+  const p2 = document.getElementById('reg-pw2').value;
+  const err = document.getElementById('reg-error');
+  if (p1 !== p2) { err.textContent = "Passwords don't match"; err.style.display='block'; return; }
+  try {
+    const r = await fetch('/api/register', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u,password:p1})});
+    const d = await r.json();
+    if (r.ok) { err.style.display='none'; checkAuth(); }
+    else { err.textContent = d.error; err.style.display='block'; }
+  } catch(e) { err.textContent = 'Connection error'; err.style.display='block'; }
+});
+
+document.getElementById('logout-link').addEventListener('click', async (e) => {
+  e.preventDefault();
+  await fetch('/api/logout', {method:'POST'});
+  checkAuth();
+});
+
+// ── Profile / Change Password ──
+document.getElementById('profile-link').addEventListener('click', (e) => {
+  e.preventDefault();
+  const panel = document.getElementById('profile-panel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+});
+
+document.getElementById('prof-save-btn').addEventListener('click', async () => {
+  const oldPw = document.getElementById('prof-old-pw').value;
+  const newPw = document.getElementById('prof-new-pw').value;
+  const newPw2 = document.getElementById('prof-new-pw2').value;
+  const msg = document.getElementById('prof-msg');
+  if (newPw !== newPw2) { msg.textContent = "Passwords don't match"; msg.style.color='var(--red)'; msg.style.display='block'; return; }
+  if (newPw.length < 3) { msg.textContent = 'Min 3 characters'; msg.style.color='var(--red)'; msg.style.display='block'; return; }
+  try {
+    const r = await fetch('/api/change-password', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({old_password:oldPw, new_password:newPw})});
+    const d = await r.json();
+    msg.textContent = d.error || d.message || 'OK';
+    msg.style.color = r.ok ? 'var(--green)' : 'var(--red)';
+    msg.style.display = 'block';
+    if (r.ok) { document.getElementById('prof-old-pw').value=''; document.getElementById('prof-new-pw').value=''; document.getElementById('prof-new-pw2').value=''; }
+  } catch(e) { msg.textContent = 'Error'; msg.style.color='var(--red)'; msg.style.display='block'; }
+});
+
+async function loadMyPastes() {
+  try {
+    const r = await fetch('/api/pastes');
+    const pastes = await r.json();
+    const div = document.getElementById('my-pastes');
+    if (!pastes.length) { div.innerHTML = '<span style="color:var(--text-dim);font-size:0.8rem">no pastes yet</span>'; return; }
+    div.innerHTML = pastes.map(p => 
+      `<div class="recent-item">
+        <a href="/${p.id}">/${p.id}</a>
+        <span class="meta">${p.type} · ${p.views}v · ${p.created_at||''}</span>
+      </div>`
+    ).join('');
+  } catch(e) {}
+}
+
+// Auth tabs
+document.querySelectorAll('#auth-panel .tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('#auth-panel .tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('auth-login').style.display = t.dataset.auth === 'login' ? 'block' : 'none';
+    document.getElementById('auth-register').style.display = t.dataset.auth === 'register' ? 'block' : 'none';
+  });
+});
 
 // ── Tabs ──
 document.querySelectorAll('.tab').forEach(t => {
@@ -491,6 +645,9 @@ document.addEventListener('keydown', e => {
     document.getElementById('submit-btn').click();
   }
 });
+
+// Init
+checkAuth();
 </script>
 </body>
 </html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SecDrop — Admin Login</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+  :root { --bg:#0a0a0a; --surface:#111; --border:#1a1a1a; --green:#00ff41; --amber:#ffb000; --red:#ff3333; --text:#c0c0c0; --text-dim:#666; --radius:6px; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:var(--bg); color:var(--text);
+    font-family:'JetBrains Mono',monospace;
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+  }
+  body::after {
+    content:''; position:fixed; top:0; left:0; width:100%; height:100%;
+    background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);
+    pointer-events:none; z-index:999;
+  }
+  .box {
+    position:relative; z-index:1; background:var(--surface); border:1px solid var(--amber);
+    border-radius:var(--radius); padding:3rem 2rem; text-align:center; min-width:340px; animation:slideIn 0.3s ease;
+  }
+  @keyframes slideIn { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
+  h1 { color:var(--amber); font-size:1.5rem; letter-spacing:3px; margin-bottom:0.5rem; }
+  .sub { color:var(--text-dim); font-size:0.7rem; letter-spacing:2px; margin-bottom:1.5rem; }
+  input[type="password"] {
+    width:100%; background:var(--bg); border:1px solid var(--border);
+    color:var(--text); font-family:inherit; font-size:1rem; padding:0.8rem;
+    border-radius:var(--radius); outline:none; text-align:center; margin-bottom:1rem;
+  }
+  input:focus { border-color:var(--amber); }
+  .btn {
+    background:transparent; border:1px solid var(--amber); color:var(--amber);
+    font-family:inherit; font-size:0.9rem; padding:0.7rem 2rem;
+    cursor:pointer; border-radius:var(--radius); letter-spacing:1px;
+    text-transform:uppercase; transition:all 0.15s; width:100%;
+  }
+  .btn:hover { background:rgba(255,176,0,0.1); }
+  .error { color:var(--red); font-size:0.8rem; margin-bottom:1rem; }
+  .back { color:var(--text-dim); font-size:0.7rem; margin-top:1rem; }
+  .back a { color:var(--green); text-decoration:none; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>▸ ADMIN ACCESS</h1>
+  <div class="sub">SECURE AUTHENTICATION REQUIRED</div>
+  {% if error %}<div class="error">✕ {{ error }}</div>{% endif %}
+  <form method="POST">
+    <input type="password" name="password" placeholder="Admin password" autofocus>
+    <button class="btn" type="submit">▸ UNLOCK DASHBOARD</button>
+  </form>
+  <div class="back"><a href="/">← back</a></div>
+</div>
+</body>
+</html>
