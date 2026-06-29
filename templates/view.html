@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SecDrop — View Paste</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111;
+    --border: #1a1a1a;
+    --green: #00ff41;
+    --green-dim: #003b1e;
+    --amber: #ffb000;
+    --red: #ff3333;
+    --cyan: #00e5ff;
+    --text: #c0c0c0;
+    --text-dim: #666;
+    --radius: 6px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  body::after {
+    content: '';
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none; z-index: 999;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 900px;
+    padding: 2rem 1.5rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1rem;
+  }
+  header a {
+    color: var(--green);
+    text-decoration: none;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+  }
+  header .meta {
+    color: var(--text-dim);
+    font-size: 0.7rem;
+    margin-top: 0.3rem;
+    letter-spacing: 1px;
+  }
+
+  .lock-screen {
+    text-align: center;
+    padding: 3rem 1rem;
+  }
+  .lock-screen h2 { color: var(--amber); margin-bottom: 1rem; font-size: 1.2rem; }
+  .lock-screen input {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); font-family: inherit; font-size: 1rem;
+    padding: 0.7rem 1rem; border-radius: var(--radius); outline: none;
+    width: 250px; text-align: center;
+  }
+  .lock-screen input:focus { border-color: var(--amber); }
+  .lock-screen button {
+    background: transparent; border: 1px solid var(--amber); color: var(--amber);
+    font-family: inherit; padding: 0.6rem 1.5rem; cursor: pointer;
+    border-radius: var(--radius); margin-left: 0.5rem; letter-spacing: 1px;
+  }
+
+  .content-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    overflow-x: auto;
+  }
+  .content-box pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: inherit;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  .file-box {
+    text-align: center;
+    padding: 2rem;
+  }
+  .file-box .icon { font-size: 3rem; margin-bottom: 0.8rem; }
+  .file-box .filename { color: var(--cyan); font-size: 1rem; margin-bottom: 0.3rem; word-break: break-all; }
+  .file-box .filesize { color: var(--text-dim); font-size: 0.8rem; margin-bottom: 1rem; }
+
+  .btn {
+    background: transparent; border: 1px solid var(--green); color: var(--green);
+    font-family: inherit; font-size: 0.85rem; padding: 0.6rem 1.5rem;
+    cursor: pointer; border-radius: var(--radius); letter-spacing: 1px;
+    text-transform: uppercase; transition: all 0.15s;
+  }
+  .btn:hover { background: var(--green-dim); box-shadow: 0 0 20px rgba(0,255,65,0.1); }
+  .burn-warning { color: var(--red); font-size: 0.75rem; margin-top: 0.5rem; letter-spacing: 1px; }
+
+  .error { text-align: center; padding: 3rem; color: var(--red); }
+
+  .toast {
+    position: fixed; bottom: 2rem; right: 2rem;
+    background: var(--surface); border: 1px solid var(--green);
+    padding: 0.8rem 1.2rem; border-radius: var(--radius);
+    font-size: 0.8rem; color: var(--green); z-index: 1000;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <a href="/">SEC/DROP</a>
+    <div class="meta">
+      ID: {{ paste.id }} · Created: {{ paste.created_at }}
+      {% if paste.password_hash %}· 🔒 Password protected{% endif %}
+      {% if paste.burn_after %}· 🔥 Burn after read{% endif %}
+    </div>
+  </header>
+
+  {% if paste.password_hash %}
+  <div class="lock-screen" id="lock">
+    <h2>🔒 This paste is password-protected</h2>
+    <input type="password" id="pw-input" placeholder="Enter password">
+    <button onclick="unlock()">UNLOCK</button>
+  </div>
+  {% endif %}
+
+  <div id="content-area" style="display: {{ 'none' if paste.password_hash else 'block' }}">
+    {% if paste.type == 'text' %}
+    <div class="content-box">
+      <pre id="paste-text">Loading...</pre>
+    </div>
+    {% else %}
+    <div class="content-box file-box">
+      <div class="icon">📄</div>
+      <div class="filename">{{ paste.filename or 'unnamed' }}</div>
+      <div class="filesize" id="filesize">{{ paste.size_bytes }} bytes</div>
+      <button class="btn" onclick="downloadFile()">⬇ Download</button>
+      {% if paste.burn_after %}<div class="burn-warning">⚠ This file will self-destruct after download</div>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="error" id="error-msg" style="display:none"></div>
+</div>
+
+<script>
+const pasteId = "{{ paste.id }}";
+const pasteType = "{{ paste.type }}";
+const hasPassword = {{ 'true' if paste.password_hash else 'false' }};
+let password = '';
+
+// Ngrok browser warning skip
+const originalFetch = window.fetch;
+window.fetch = function(url, options = {}) {
+  options.headers = options.headers || {};
+  if (options.headers instanceof Headers) {
+    options.headers.set('ngrok-skip-browser-warning', '1');
+  } else {
+    options.headers['ngrok-skip-browser-warning'] = '1';
+  }
+  return originalFetch.call(this, url, options);
+};
+
+async function fetchPaste() {
+  const body = hasPassword ? JSON.stringify({ password }) : JSON.stringify({});
+  try {
+    const res = await fetch(`/api/paste/${pasteId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    return data;
+  } catch (e) {
+    throw e;
+  }
+}
+
+async function unlock() {
+  password = document.getElementById('pw-input').value;
+  const lock = document.getElementById('lock');
+  const area = document.getElementById('content-area');
+  const err = document.getElementById('error-msg');
+
+  try {
+    const data = await fetchPaste();
+    lock.style.display = 'none';
+    area.style.display = 'block';
+    renderContent(data);
+    if (data.destroyed) {
+      const notice = document.createElement('div');
+      notice.style.cssText = 'text-align:center;color:var(--red);margin-top:1rem;font-size:0.8rem;letter-spacing:1px';
+      notice.textContent = '🔥 This paste self-destructed. It no longer exists on the server.';
+      area.appendChild(notice);
+    }
+  } catch (e) {
+    err.textContent = '✕ ' + (e.message || 'Wrong password');
+    err.style.display = 'block';
+    setTimeout(() => err.style.display = 'none', 3000);
+  }
+}
+
+async function loadContent() {
+  if (hasPassword) return;
+  try {
+    const data = await fetchPaste();
+    const area = document.getElementById('content-area');
+    renderContent(data);
+    if (data.destroyed) {
+      const notice = document.createElement('div');
+      notice.style.cssText = 'text-align:center;color:var(--red);margin-top:1rem;font-size:0.8rem;letter-spacing:1px';
+      notice.textContent = '🔥 This paste self-destructed. It no longer exists on the server.';
+      area.appendChild(notice);
+    }
+  } catch (e) {
+    document.getElementById('error-msg').textContent = '✕ ' + (e.message || 'Failed to load');
+    document.getElementById('error-msg').style.display = 'block';
+    document.getElementById('content-area').style.display = 'none';
+  }
+}
+
+function renderContent(data) {
+  if (data.type === 'text') {
+    document.getElementById('paste-text').textContent = data.content;
+  }
+}
+
+async function downloadFile() {
+  try {
+    const body = hasPassword ? JSON.stringify({ password }) : JSON.stringify({});
+    const res = await fetch(`/api/raw/${pasteId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "{{ paste.filename or 'download' }}";
+    a.click();
+    URL.revokeObjectURL(url);
+
+    {% if paste.burn_after %}
+    setTimeout(() => {
+      document.querySelector('.file-box').innerHTML = '<p style="color:var(--red)">🔥 File burned. It no longer exists.</p>';
+    }, 500);
+    {% endif %}
+  } catch (e) {
+    alert('Download failed: ' + e.message);
+  }
+}
+
+// Enter key on password
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('lock')?.style.display !== 'none') {
+    unlock();
+  }
+});
+
+loadContent();
+</script>
+</body>
+</html>

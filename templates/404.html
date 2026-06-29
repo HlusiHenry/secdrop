@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>404 — SecDrop</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+  body {
+    background: #0a0a0a; color: #c0c0c0;
+    font-family: 'JetBrains Mono', monospace;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; margin: 0; text-align: center;
+  }
+  h1 { font-size: 5rem; color: #ff3333; margin: 0; letter-spacing: 10px; }
+  p { color: #666; margin: 1rem 0; }
+  a { color: #00ff41; text-decoration: none; }
+  code { background: #111; padding: 0.2rem 0.5rem; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div>
+  <h1>404</h1>
+  <p>PASTE NOT FOUND OR EXPIRED</p>
+  <p><code>rm -rf /paste/{{ request.path }}</code></p>
+  <p><a href="/">&gt; cd /</a></p>
+</div>
+</body>
+</html>

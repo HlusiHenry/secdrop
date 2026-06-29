@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SecDrop — Encrypted Pastebin</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111;
+    --border: #1a1a1a;
+    --green: #00ff41;
+    --green-dim: #003b1e;
+    --amber: #ffb000;
+    --red: #ff3333;
+    --cyan: #00e5ff;
+    --text: #c0c0c0;
+    --text-dim: #666;
+    --radius: 6px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Scanlines */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* CRT flicker */
+  @keyframes flicker {
+    0% { opacity: 0.97; }
+    5% { opacity: 1; }
+    10% { opacity: 0.98; }
+    15% { opacity: 1; }
+    100% { opacity: 1; }
+  }
+  body { animation: flicker 0.15s infinite; }
+
+  .container {
+    width: 100%;
+    max-width: 800px;
+    padding: 2rem 1.5rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Header ── */
+  header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+  .logo {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--green);
+    text-shadow: 0 0 20px var(--green-dim), 0 0 60px var(--green-dim);
+    letter-spacing: 4px;
+    margin-bottom: 0.3rem;
+  }
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+  }
+  .subtitle span {
+    color: var(--green);
+  }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.5rem;
+  }
+  .tab {
+    padding: 0.6rem 1.5rem;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-bottom: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 0.85rem;
+    transition: all 0.15s;
+  }
+  .tab.active {
+    color: var(--green);
+    border-color: var(--border);
+    background: var(--surface);
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* ── Textarea ── */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  textarea, input[type="text"], input[type="password"] {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 0.8rem;
+    border-radius: var(--radius);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  textarea:focus, input:focus {
+    border-color: var(--green-dim);
+  }
+  textarea {
+    min-height: 280px;
+    resize: vertical;
+    line-height: 1.5;
+  }
+  textarea::placeholder { color: var(--text-dim); }
+
+  /* ── File drop zone ── */
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 3rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface);
+  }
+  .dropzone:hover, .dropzone.dragover {
+    border-color: var(--green-dim);
+    background: #0d1a0d;
+  }
+  .dropzone .icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+  .dropzone .main-text { color: var(--text); margin-bottom: 0.3rem; }
+  .dropzone .sub-text { color: var(--text-dim); font-size: 0.75rem; }
+  .dropzone input[type="file"] { display: none; }
+  .file-selected {
+    margin-top: 1rem;
+    color: var(--green);
+    font-size: 0.85rem;
+    display: none;
+  }
+  .file-selected.visible { display: block; }
+
+  /* ── Options row ── */
+  .options {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .options select, .options input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: inherit;
+    padding: 0.5rem 0.8rem;
+    border-radius: var(--radius);
+    font-size: 0.85rem;
+    outline: none;
+  }
+  .options select:focus { border-color: var(--green-dim); }
+  .options label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  input[type="checkbox"] {
+    accent-color: var(--green);
+    cursor: pointer;
+  }
+
+  /* ── Button ── */
+  .btn {
+    background: transparent;
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 0.7rem 2rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: all 0.15s;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 1rem;
+  }
+  .btn:hover {
+    background: var(--green-dim);
+    box-shadow: 0 0 20px rgba(0,255,65,0.1);
+  }
+  .btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  /* ── Result ── */
+  .result {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--green-dim);
+    border-radius: var(--radius);
+    display: none;
+    animation: slideIn 0.3s ease;
+  }
+  .result.visible { display: block; }
+  .result .url {
+    color: var(--cyan);
+    font-size: 1.1rem;
+    word-break: break-all;
+    margin-bottom: 0.5rem;
+  }
+  .result .actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .result .btn-sm {
+    padding: 0.35rem 0.8rem;
+    font-size: 0.75rem;
+    margin-top: 0;
+  }
+  .result .qr {
+    margin-top: 0.5rem;
+    max-width: 150px;
+  }
+
+  /* ── Recent list ── */
+  .recent { margin-top: 3rem; }
+  .recent h3 {
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    margin-bottom: 1rem;
+  }
+  .recent-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+  }
+  .recent-item a { color: var(--cyan); text-decoration: none; }
+  .recent-item a:hover { color: var(--green); }
+  .recent-item .meta { color: var(--text-dim); font-size: 0.7rem; }
+
+  /* ── Animations ── */
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--surface);
+    border: 1px solid var(--green);
+    padding: 0.8rem 1.2rem;
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    color: var(--green);
+    z-index: 1000;
+    animation: slideIn 0.3s ease;
+    display: none;
+  }
+  .toast.visible { display: block; }
+  .toast.error { border-color: var(--red); color: var(--red); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">SEC/DROP</div>
+    <div class="subtitle"><span>▶</span> ENCRYPTED PASTEBIN <span>◀</span></div>
+  </header>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" data-tab="text">&gt; paste_text</button>
+    <button class="tab" data-tab="file">&gt; upload_file</button>
+  </div>
+
+  <!-- Text panel -->
+  <div class="tab-panel active" id="panel-text">
+    <textarea id="paste-content" placeholder="// Paste or type your content here...&#10;// Text is encrypted before storage.&#10;// No one (not even the server) can read it without the link."></textarea>
+  </div>
+
+  <!-- File panel -->
+  <div class="tab-panel" id="panel-file">
+    <div class="dropzone" id="dropzone">
+      <span class="icon">📁</span>
+      <div class="main-text">Drop file here or click to browse</div>
+      <div class="sub-text">Max 100MB · Encrypted at rest</div>
+      <input type="file" id="file-input">
+    </div>
+    <div class="file-selected" id="file-selected"></div>
+  </div>
+
+  <!-- Options -->
+  <div class="options">
+    <select id="expire">
+      <option value="24h">Expires: 24 hours</option>
+      <option value="1h">Expires: 1 hour</option>
+      <option value="7d">Expires: 7 days</option>
+      <option value="30d">Expires: 30 days</option>
+      <option value="never">Never expire</option>
+    </select>
+    <input type="password" id="password" placeholder="Optional password" style="width:180px">
+    <label>
+      <input type="checkbox" id="burn">
+      <span>🔥 Burn after read</span>
+    </label>
+  </div>
+
+  <button class="btn" id="submit-btn">▸ Create Paste</button>
+
+  <!-- Result -->
+  <div class="result" id="result">
+    <div class="url" id="result-url"></div>
+    <div class="actions">
+      <button class="btn btn-sm" onclick="copyUrl()">📋 Copy</button>
+      <button class="btn btn-sm" onclick="openUrl()">↗ Open</button>
+      <button class="btn btn-sm" onclick="showQR()">📱 QR</button>
+    </div>
+    <img class="qr" id="qr-img" style="display:none">
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let currentTab = 'text';
+let selectedFile = null;
+
+// Ngrok browser warning skip
+const originalFetch = window.fetch;
+window.fetch = function(url, options = {}) {
+  options.headers = options.headers || {};
+  if (options.headers instanceof Headers) {
+    options.headers.set('ngrok-skip-browser-warning', '1');
+  } else {
+    options.headers['ngrok-skip-browser-warning'] = '1';
+  }
+  return originalFetch.call(this, url, options);
+};
+
+// ── Tabs ──
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    currentTab = t.dataset.tab;
+    document.getElementById(`panel-${currentTab}`).classList.add('active');
+  });
+});
+
+// ── File drop ──
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('file-input');
+const fileSelected = document.getElementById('file-selected');
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) handleFile(fileInput.files[0]);
+});
+
+function handleFile(file) {
+  selectedFile = file;
+  const size = file.size > 1024*1024 ? `${(file.size/(1024*1024)).toFixed(1)} MB` : `${(file.size/1024).toFixed(0)} KB`;
+  fileSelected.textContent = `📎 ${file.name} (${size})`;
+  fileSelected.classList.add('visible');
+}
+
+// ── Submit ──
+document.getElementById('submit-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = '⋯ Encrypting...';
+
+  const form = new FormData();
+  form.append('type', currentTab);
+  form.append('expire', document.getElementById('expire').value);
+  form.append('password', document.getElementById('password').value);
+  form.append('burn', document.getElementById('burn').checked ? '1' : '0');
+
+  if (currentTab === 'text') {
+    form.append('content', document.getElementById('paste-content').value);
+  } else {
+    if (!selectedFile) {
+      toast('Select a file first', true);
+      btn.disabled = false;
+      btn.textContent = '▸ Create Paste';
+      return;
+    }
+    form.append('file', selectedFile);
+  }
+
+  try {
+    const res = await fetch('/api/paste', { method: 'POST', body: form });
+    const data = await res.json();
+    if (res.ok) {
+      showResult(data);
+    } else {
+      toast(data.error || 'Error', true);
+    }
+  } catch (e) {
+    toast('Connection failed: ' + e.message, true);
+  }
+  btn.disabled = false;
+  btn.textContent = '▸ Create Paste';
+});
+
+function showResult(data) {
+  const div = document.getElementById('result');
+  document.getElementById('result-url').textContent = data.url;
+  div.dataset.url = data.url;
+  div.dataset.id = data.id;
+  div.classList.add('visible');
+  document.getElementById('qr-img').style.display = 'none';
+}
+
+function copyUrl() {
+  const url = document.getElementById('result').dataset.url;
+  navigator.clipboard.writeText(url).then(() => toast('Copied!'));
+}
+
+function openUrl() {
+  window.open(document.getElementById('result').dataset.url, '_blank');
+}
+
+function showQR() {
+  const id = document.getElementById('result').dataset.id;
+  const img = document.getElementById('qr-img');
+  img.src = `/api/qr/${id}`;
+  img.style.display = 'block';
+}
+
+function toast(msg, isError=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast visible' + (isError ? ' error' : '');
+  setTimeout(() => t.classList.remove('visible'), 3000);
+}
+
+// Keyboard shortcut
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'Enter') {
+    document.getElementById('submit-btn').click();
+  }
+});
+</script>
+</body>
+</html>
